@@ -1,0 +1,30 @@
+# Core UI libraries
+ttkbootstrap>=1.0.0
+# pillow>=9.0.0  # Required for ttkbootstrap image support
+
+# # Network and API communication
+requests>=2.28.0
+# urllib3>=1.26.0
+
+# # Windows system integration
+# pywin32>=303  # For Windows service integration
+# psutil>=5.9.0  # For monitoring network stats
+
+# # Configuration and file handling
+# configparser>=5.0.0
+# pyyaml>=6.0
+
+# # Security and encryption
+# cryptography>=37.0.0
+
+# # System tray and notifications
+# pystray>=0.19.0
+# win10toast>=0.9  # Windows notifications
+
+# # QR code generation (for mobile device configs)
+# qrcode>=7.3.0
+
+# Optional development tools
+# black>=22.0.0  # Code formatting
+# pytest>=7.0.0  # Testing
+# pyinstaller>=5.6.0  # For creating standalone executable
