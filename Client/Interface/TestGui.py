@@ -93,10 +93,10 @@ class GhostSwitchVPN:
         if os.path.exists(icon_path):
             master.iconbitmap(icon_path)
 
-        # Configure window size
-        master.geometry("450x600")  # Made taller for VPN screen
-        master.minsize(450, 600)
-        master.maxsize(450, 600)
+        # Configure window size - Made larger for VPN screen
+        master.geometry("500x600")
+        master.minsize(500, 600)
+        master.maxsize(500, 600)
 
         # Variables for login/signup
         self.username_var = tk.StringVar()
@@ -340,39 +340,240 @@ class GhostSwitchVPN:
         status_label.pack(pady=10)
     
     def create_vpn_screen(self):
-        """Create the main VPN dashboard"""
-        # Header
-        header_frame = tb.Frame(self.vpn_frame)
-        header_frame.pack(fill="x", padx=20, pady=20)
+        """Create the main VPN dashboard with enhanced visuals"""
         
-        # Title and user info
-        title = tb.Label(header_frame, text="GhostSwitch VPN", 
-                        font=("Helvetica", 18, "bold"))
-        title.pack(side="left")
+        # Main container with padding
+        main_container = tb.Frame(self.vpn_frame)
+        main_container.pack(fill="both", expand=True, padx=15, pady=15)
         
-        user_frame = tb.Frame(header_frame)
-        user_frame.pack(side="right")
+        # Header section - REMOVED style="info.TFrame" to remove light blue background
+        header_frame = tb.Frame(main_container, padding=10)
+        header_frame.pack(fill="x", pady=(0, 15))
         
-        self.user_label = tb.Label(user_frame, text="")
-        self.user_label.pack(side="right", padx=(0, 10))
+        # Title with icon-like styling
+        title_container = tb.Frame(header_frame)
+        title_container.pack(side="left")
         
-        logout_btn = tb.Button(user_frame, text="Logout", 
-                            style="outline.TButton", command=self.logout)
-        logout_btn.pack(side="right")
+        # # App icon/logo (using emoji as placeholder)
+        # icon_label = tb.Label(title_container, text="🛡️", font=("Helvetica", 20))
+        # icon_label.pack(side="left", padx=(0, 8))
         
-        # WireGuard Status
-        status_frame = tb.LabelFrame(self.vpn_frame, text="System Status", padding=10)
-        status_frame.pack(fill="x", padx=20, pady=10)
+        title_text = tb.Frame(title_container)
+        title_text.pack(side="left")
         
-        self.wireguard_status_label = tb.Label(status_frame, text="WireGuard: Checking...")
+        app_title = tb.Label(title_text, text="GhostSwitch", 
+                            font=("Helvetica", 16, "bold"))
+        app_title.pack(anchor="w")
+        
+        subtitle = tb.Label(title_text, text="Secure VPN Connection", 
+                        font=("Helvetica", 9), foreground="#6c757d")
+        subtitle.pack(anchor="w")
+        
+        # User info section with better styling
+        user_container = tb.Frame(header_frame)
+        user_container.pack(side="right")
+        
+        # User avatar (using emoji)
+        user_avatar = tb.Label(user_container, text="👤", font=("Helvetica", 14))
+        user_avatar.pack(side="right", padx=(8, 3))
+        
+        user_info_frame = tb.Frame(user_container)
+        user_info_frame.pack(side="right")
+        
+        self.user_label = tb.Label(user_info_frame, text="", font=("Helvetica", 9, "bold"))
+        self.user_label.pack(anchor="e")
+        
+        logout_btn = tb.Button(user_info_frame, text="Logout", 
+                            style="outline.TButton", 
+                            command=self.logout,
+                            width=6)
+        logout_btn.pack(anchor="e", pady=(2, 0))
+        
+        # Connection Status Card with enhanced design
+        status_card = tb.LabelFrame(main_container, text="🔌 Connection Status", 
+                                padding=15, style="success.TLabelframe")
+        status_card.pack(fill="x", pady=(0, 10))
+        
+        # Status indicator with visual elements
+        status_container = tb.Frame(status_card)
+        status_container.pack(fill="x")
+        
+        # Large status indicator
+        indicator_frame = tb.Frame(status_container)
+        indicator_frame.pack(side="left", padx=(0, 15))
+        
+        # Fixed canvas background color issue
+        self.status_circle = tk.Canvas(indicator_frame, width=50, height=50, 
+                                    highlightthickness=0, bg="#2c3e50")
+        self.status_circle.pack()
+        
+        # Initial disconnected state
+        self.status_circle.create_oval(3, 3, 47, 47, fill="#dc3545", outline="#dc3545", width=2)
+        self.status_circle.create_text(25, 25, text="❌", font=("Helvetica", 14), fill="white")
+        
+        # Status text and details
+        status_text_frame = tb.Frame(status_container)
+        status_text_frame.pack(side="left", fill="x", expand=True)
+        
+        self.connection_status_label = tb.Label(status_text_frame, text="Disconnected", 
+                                            font=("Helvetica", 14, "bold"), 
+                                            foreground="#dc3545")
+        self.connection_status_label.pack(anchor="w")
+        
+        self.connection_detail_label = tb.Label(status_text_frame, 
+                                            text="Not connected to any server", 
+                                            font=("Helvetica", 9),
+                                            foreground="#6c757d")
+        self.connection_detail_label.pack(anchor="w", pady=(2, 0))
+        
+        # IP Address display
+        ip_container = tb.Frame(status_container)
+        ip_container.pack(side="right")
+        
+        ip_icon = tb.Label(ip_container, text="🌐", font=("Helvetica", 12))
+        ip_icon.pack()
+        
+        self.ip_label = tb.Label(ip_container, text="IP: Hidden", 
+                                font=("Helvetica", 9, "bold"))
+        self.ip_label.pack()
+        
+        # System Status Card with enhanced design
+        system_card = tb.LabelFrame(main_container, text="⚙️ System Status", 
+                                padding=15, style="info.TLabelframe")
+        system_card.pack(fill="x", pady=(0, 10))
+        
+        # WireGuard status with icon and progress-like display
+        wg_container = tb.Frame(system_card)
+        wg_container.pack(fill="x")
+        
+        wg_icon = tb.Label(wg_container, text="🔧", font=("Helvetica", 12))
+        wg_icon.pack(side="left", padx=(0, 8))
+        
+        wg_info_frame = tb.Frame(wg_container)
+        wg_info_frame.pack(side="left", fill="x", expand=True)
+        
+        wg_title = tb.Label(wg_info_frame, text="WireGuard Client", 
+                        font=("Helvetica", 11, "bold"))
+        wg_title.pack(anchor="w")
+        
+        self.wireguard_status_label = tb.Label(wg_info_frame, text="Checking installation...", 
+                                            font=("Helvetica", 9))
         self.wireguard_status_label.pack(anchor="w")
         
-        # VPN Connection Section (placeholder)
-        vpn_connection_frame = tb.LabelFrame(self.vpn_frame, text="VPN Connection", padding=10)
-        vpn_connection_frame.pack(fill="x", padx=20, pady=10)
+        # Progress bar for checking status
+        self.wg_progress = tb.Progressbar(wg_container, mode='indeterminate', length=80)
+        self.wg_progress.pack(side="right")
+        self.wg_progress.start()  # Start animation while checking
         
-        placeholder_label = tb.Label(vpn_connection_frame, text="VPN controls will be implemented next")
-        placeholder_label.pack()
+        # VPN Controls Section with better layout
+        controls_card = tb.LabelFrame(main_container, text="🚀 VPN Controls", 
+                                    padding=15, style="primary.TLabelframe")
+        controls_card.pack(fill="x", pady=(0, 10))
+        
+        # Server selection with enhanced design
+        server_container = tb.Frame(controls_card)
+        server_container.pack(fill="x", pady=(0, 12))
+        
+        server_label_frame = tb.Frame(server_container)
+        server_label_frame.pack(fill="x", pady=(0, 5))
+        
+        server_icon = tb.Label(server_label_frame, text="🌍", font=("Helvetica", 11))
+        server_icon.pack(side="left", padx=(0, 3))
+        
+        server_label = tb.Label(server_label_frame, text="Select Server Location:", 
+                            font=("Helvetica", 10, "bold"))
+        server_label.pack(side="left")
+        
+        # Server dropdown with better styling
+        self.server_var = tk.StringVar()
+        self.server_dropdown = tb.Combobox(server_container, 
+                                        textvariable=self.server_var,
+                                        state="readonly", 
+                                        font=("Helvetica", 9),
+                                        width=45)
+        self.server_dropdown.pack(fill="x")
+        
+        # Dummy server data with flags
+        dummy_servers = [
+            "🇺🇸 United States - New York (Ultra Fast)",
+            "🇺🇸 United States - Los Angeles (Fast)", 
+            "🇬🇧 United Kingdom - London (Fast)",
+            "🇩🇪 Germany - Frankfurt (Medium)",
+            "🇸🇬 Singapore - Singapore (Fast)",
+            "🇯🇵 Japan - Tokyo (Medium)",
+            "🇨🇦 Canada - Toronto (Fast)"
+        ]
+        self.server_dropdown['values'] = dummy_servers
+        if dummy_servers:
+            self.server_dropdown.set(dummy_servers[0])
+        
+        # Connection buttons - REMOVED Quick Connect button
+        button_container = tb.Frame(controls_card)
+        button_container.pack(fill="x", pady=(8, 0))
+        
+        # Main connect button - Made wider since we removed quick connect
+        self.connect_btn = tb.Button(button_container, 
+                                    text="🔒 Connect VPN", 
+                                    style="success.TButton",
+                                    command=self.toggle_connection,
+                                    width=25)  # Made wider
+        self.connect_btn.pack(side="left", padx=(0, 10))
+        
+        # Refresh servers button
+        refresh_btn = tb.Button(button_container, 
+                            text="🔄 Refresh", 
+                            style="outline.TButton",
+                            command=self.refresh_servers,
+                            width=10)
+        refresh_btn.pack(side="right")
+        
+        # Statistics section (initially hidden)
+        self.stats_card = tb.LabelFrame(main_container, text="📊 Connection Statistics", 
+                                    padding=15, style="secondary.TLabelframe")
+        
+        # Create stats content
+        stats_container = tb.Frame(self.stats_card)
+        stats_container.pack(fill="x")
+        
+        # Stats grid with icons
+        stats_grid = tb.Frame(stats_container)
+        stats_grid.pack(fill="x")
+        
+        # Duration
+        duration_frame = tb.Frame(stats_grid)
+        duration_frame.pack(fill="x", pady=1)
+        tb.Label(duration_frame, text="⏱️", font=("Helvetica", 10)).pack(side="left", padx=(0, 3))
+        tb.Label(duration_frame, text="Duration:", font=("Helvetica", 9)).pack(side="left")
+        self.duration_label = tb.Label(duration_frame, text="00:00:00", 
+                                    font=("Helvetica", 9, "bold"), foreground="#28a745")
+        self.duration_label.pack(side="right")
+        
+        # Data sent
+        sent_frame = tb.Frame(stats_grid)
+        sent_frame.pack(fill="x", pady=1)
+        tb.Label(sent_frame, text="📤", font=("Helvetica", 10)).pack(side="left", padx=(0, 3))
+        tb.Label(sent_frame, text="Data Sent:", font=("Helvetica", 9)).pack(side="left")
+        self.data_sent_label = tb.Label(sent_frame, text="0 MB", 
+                                    font=("Helvetica", 9, "bold"), foreground="#007bff")
+        self.data_sent_label.pack(side="right")
+        
+        # Data received
+        received_frame = tb.Frame(stats_grid)
+        received_frame.pack(fill="x", pady=1)
+        tb.Label(received_frame, text="📥", font=("Helvetica", 10)).pack(side="left", padx=(0, 3))
+        tb.Label(received_frame, text="Data Received:", font=("Helvetica", 9)).pack(side="left")
+        self.data_received_label = tb.Label(received_frame, text="0 MB", 
+                                        font=("Helvetica", 9, "bold"), foreground="#28a745")
+        self.data_received_label.pack(side="right")
+        
+        # Speed
+        speed_frame = tb.Frame(stats_grid)
+        speed_frame.pack(fill="x", pady=1)
+        tb.Label(speed_frame, text="🚀", font=("Helvetica", 10)).pack(side="left", padx=(0, 3))
+        tb.Label(speed_frame, text="Speed:", font=("Helvetica", 9)).pack(side="left")
+        self.speed_label = tb.Label(speed_frame, text="0 Mbps", 
+                                font=("Helvetica", 9, "bold"), foreground="#ffc107")
+        self.speed_label.pack(side="right")
 
     def validate_username_requirements(self, *args):
         """Validate username as user types and update UI accordingly"""
@@ -380,11 +581,11 @@ class GhostSwitchVPN:
         
         if len(username) > 0:
             if len(username) >= 8:
-                self.username_req.config(foreground="#28a745")
+                self.username_req.config(foreground="#28a745")  # Green
             else:
-                self.username_req.config(foreground="#dc3545")
+                self.username_req.config(foreground="#dc3545")  # Red
         else:
-            self.username_req.config(foreground="#6c757d")
+            self.username_req.config(foreground="#6c757d")  # Gray
 
     def validate_password_requirements(self, *args):
         """Validate password as user types and update UI accordingly"""
@@ -392,11 +593,11 @@ class GhostSwitchVPN:
         
         if len(password) > 0:
             if self.is_password_valid(password):
-                self.password_req.config(foreground="#28a745")
+                self.password_req.config(foreground="#28a745")  # Green
             else:
-                self.password_req.config(foreground="#dc3545")
+                self.password_req.config(foreground="#dc3545")  # Red
         else:
-            self.password_req.config(foreground="#6c757d")
+            self.password_req.config(foreground="#6c757d")  # Gray
 
         # Also validate confirm password when password changes
         self.validate_confirm_password()
@@ -408,31 +609,35 @@ class GhostSwitchVPN:
         
         if len(confirm_password) > 0:
             if password == confirm_password:
-                self.confirm_password_req.config(foreground="#28a745")
+                self.confirm_password_req.config(foreground="#28a745")  # Green
             else:
-                self.confirm_password_req.config(foreground="#dc3545")
+                self.confirm_password_req.config(foreground="#dc3545")  # Red
         else:
-            self.confirm_password_req.config(foreground="#6c757d")
+            self.confirm_password_req.config(foreground="#6c757d")  # Gray
 
     def is_password_valid(self, password):
         """Check if password meets all requirements."""
         if len(password) == 0:
             return False
             
+        # Minimum length check (8 characters)
         if len(password) < 8:
             return False
         
+        # Check for at least one letter
         if not re.search(r'[a-zA-Z]', password):
             return False
             
+        # Check for at least one digit
         if not re.search(r'\d', password):
             return False
             
+        # Check for at least one special character
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
             return False
             
         return True
-    
+        
     # Navigation functions
     def show_login_screen(self):
         self.signup_frame.pack_forget()
@@ -580,28 +785,106 @@ class GhostSwitchVPN:
                 'data': {'message': 'Connection error. Please try again.'}
             })
 
+    def toggle_connection(self):
+        """Toggle VPN connection with visual feedback"""
+        # Placeholder for now - will implement actual VPN logic later
+        current_text = self.connect_btn.cget('text')
+        
+        if "Connect" in current_text:
+            # Simulate connecting
+            self.connect_btn.config(text="🔓 Disconnect VPN", style="danger.TButton")
+            self.update_connection_visual_status("connected")
+            self.show_stats()
+        else:
+            # Simulate disconnecting
+            self.connect_btn.config(text="🔒 Connect VPN", style="success.TButton")
+            self.update_connection_visual_status("disconnected")
+            self.hide_stats()
+
+
+    def refresh_servers(self):
+        """Refresh server list"""
+        # Placeholder - could add API call to refresh servers
+        pass
+
+    def update_connection_visual_status(self, status):
+        """Update visual connection status"""
+        if status == "connected":
+            # Update circle to green with checkmark
+            self.status_circle.delete("all")
+            self.status_circle.create_oval(3, 3, 47, 47, fill="#28a745", outline="#28a745", width=2)
+            self.status_circle.create_text(25, 25, text="✓", font=("Helvetica", 16, "bold"), fill="white")
+            
+            # Update labels
+            self.connection_status_label.config(text="Connected", foreground="#28a745")
+            selected_server = self.server_var.get()
+            if selected_server:
+                server_name = selected_server.split(" - ")[1].split(" (")[0]
+                self.connection_detail_label.config(text=f"Connected to {server_name}")
+            
+            self.ip_label.config(text="IP: 192.168.1.100")  # Placeholder IP
+            
+        else:
+            # Update circle to red with X
+            self.status_circle.delete("all")
+            self.status_circle.create_oval(3, 3, 47, 47, fill="#dc3545", outline="#dc3545", width=2)
+            self.status_circle.create_text(25, 25, text="❌", font=("Helvetica", 14), fill="white")
+            
+            # Update labels
+            self.connection_status_label.config(text="Disconnected", foreground="#dc3545")
+            self.connection_detail_label.config(text="Not connected to any server")
+            self.ip_label.config(text="IP: Hidden")
+
+    def show_stats(self):
+        """Show connection statistics"""
+        self.stats_card.pack(fill="x", pady=(0, 10))
+        # Start updating stats (placeholder)
+        self.update_stats()
+
+    def hide_stats(self):
+        """Hide connection statistics"""
+        self.stats_card.pack_forget()
+
+    def update_stats(self):
+        """Update connection statistics (placeholder)"""
+        # This would be replaced with real stats later
+        import random
+        if hasattr(self, 'stats_card') and self.stats_card.winfo_viewable():
+            # Simulate some stats
+            self.data_sent_label.config(text=f"{random.randint(10, 500)} MB")
+            self.data_received_label.config(text=f"{random.randint(50, 1000)} MB")
+            self.speed_label.config(text=f"{random.randint(20, 100)} Mbps")
+            
+            # Schedule next update
+            self.master.after(2000, self.update_stats)
+
     def update_wireguard_status_display(self):
-        """Update WireGuard status in UI"""
+        """Update WireGuard status in UI with enhanced visuals"""
         if hasattr(self, 'wireguard_status_label'):
+            # Stop progress bar animation
+            if hasattr(self, 'wg_progress'):
+                self.wg_progress.stop()
+                self.wg_progress.pack_forget()
+            
             if self.wireguard_status == "installed":
                 self.wireguard_status_label.config(
-                    text="WireGuard: Installed ✓", 
+                    text="✅ Installed and ready", 
                     foreground="#28a745"
                 )
             elif self.wireguard_status == "not_installed":
                 self.wireguard_status_label.config(
-                    text="WireGuard: Not Installed ✗", 
+                    text="❌ Not installed - Download required", 
                     foreground="#dc3545"
                 )
             elif self.wireguard_status == "checking":
                 self.wireguard_status_label.config(
-                    text="WireGuard: Checking...", 
+                    text="🔄 Checking installation...", 
                     foreground="#6c757d"
                 )
             else:
                 self.wireguard_status_label.config(
-                    text="WireGuard: Error checking", 
-                    foreground="#dc3545"
+                    text="⚠️ Error checking installation", 
+                    foreground="#ffc107"
                 )
 
 
