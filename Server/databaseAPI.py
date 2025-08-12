@@ -5,16 +5,28 @@ from mysql.connector import Error
 import hashlib
 import secrets
 import logging
-from datetime import datetime
+import re
+import jwt
+import subprocess
+import base64
+from datetime import datetime, timedelta
+
+# Cryptography imports for WireGuard key generation
+try:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import x25519
+    print("✅ Cryptography library available")
+except ImportError:
+    print("❌ Install: pip install cryptography PyJWT")
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for client requests
+CORS(app)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Database configuration
+# Configuration
 DB_CONFIG = {
     'host': 'test-database.cnccs0uoe80h.me-central-1.rds.amazonaws.com',
     'user': 'root',
@@ -23,6 +35,10 @@ DB_CONFIG = {
     'charset': 'utf8mb4',
     'autocommit': True
 }
+
+SERVER_PUBLIC_KEY = '198Q3PykQ81WMNpy3FuO978z+y4iTk9ssNzi9KzCF3o='
+SERVER_ENDPOINT = "51.112.111.180:51820"
+JWT_SECRET = "X@4h7HzY0@GB@-L#JC73@G48kI$F7eKokebg5I_P%ILY4+$i!Sn3S@RoAkrMjHBo"
 
 def get_db_connection():
     """Create and return a database connection"""
@@ -33,6 +49,7 @@ def get_db_connection():
     except Error as e:
         logger.error(f"Error connecting to MySQL: {e}")
         return None
+
 
 def hash_password(password, salt):
     """Hash password with salt using SHA-256"""
@@ -66,6 +83,52 @@ def validate_password(password):
     
     return True, "Valid"
 
+def token_required(f):
+    """Decorator to require valid JWT token for protected endpoints"""
+    def decorated_function(*args, **kwargs):
+        token = None
+        
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            try:
+                token = auth_header.split(" ")[1]  # Bearer <token>
+            except IndexError:
+                return jsonify({'success': False, 'message': 'Invalid token format'}), 401
+        
+        if not token:
+            return jsonify({'success': False, 'message': 'Token is missing'}), 401
+        
+        try:
+            # Decode JWT token
+            data = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+            current_user_id = data['user_id']
+            
+            # Get user from database
+            conn = get_db_connection()
+            if not conn:
+                return jsonify({'success': False, 'message': 'Database error'}), 500
+            
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM users WHERE id = %s", (current_user_id,))
+            current_user = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            
+            if not current_user:
+                return jsonify({'success': False, 'message': 'User not found'}), 401
+                
+        except jwt.ExpiredSignatureError:
+            return jsonify({'success': False, 'message': 'Token has expired'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'success': False, 'message': 'Token is invalid'}), 401
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'Token error: {str(e)}'}), 401
+        
+        return f(current_user, *args, **kwargs)
+    
+    decorated_function.__name__ = f.__name__
+    return decorated_function
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
@@ -78,22 +141,21 @@ def health_check():
             cursor.close()
             conn.close()
             return jsonify({
-                "status": "healthy",
-                "database": "connected",
-                "timestamp": datetime.now().isoformat()
+                'success': True,
+                'message': 'API and database are healthy',
+                'timestamp': datetime.now().isoformat(),
+                'server_endpoint': SERVER_ENDPOINT
             }), 200
         else:
             return jsonify({
-                "status": "unhealthy",
-                "database": "disconnected",
-                "timestamp": datetime.now().isoformat()
+                'success': False, 
+                'message': 'Database connection failed'
             }), 500
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return jsonify({
-            "status": "unhealthy",
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
+            'success': False, 
+            'message': f'Health check error: {str(e)}'
         }), 500
 
 @app.route('/api/register', methods=['POST'])
@@ -104,8 +166,8 @@ def register():
         
         if not data:
             return jsonify({
-                "success": False,
-                "message": "No data provided"
+                'success': False,
+                'message': 'No data provided'
             }), 400
         
         username = data.get('username', '').strip()
@@ -114,32 +176,32 @@ def register():
         # Validate input
         if not username or not password:
             return jsonify({
-                "success": False,
-                "message": "Username and password are required"
+                'success': False,
+                'message': 'Username and password are required'
             }), 400
         
         # Validate username
         username_valid, username_msg = validate_username(username)
         if not username_valid:
             return jsonify({
-                "success": False,
-                "message": username_msg
+                'success': False,
+                'message': username_msg
             }), 400
         
         # Validate password
         password_valid, password_msg = validate_password(password)
         if not password_valid:
             return jsonify({
-                "success": False,
-                "message": password_msg
+                'success': False,
+                'message': password_msg
             }), 400
         
         # Connect to database
         conn = get_db_connection()
         if not conn:
             return jsonify({
-                "success": False,
-                "message": "Database connection failed"
+                'success': False,
+                'message': 'Database connection failed'
             }), 500
         
         cursor = conn.cursor()
@@ -147,10 +209,12 @@ def register():
         try:
             # Check if username already exists
             cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
-            if cursor.fetchone():
+            existing_user = cursor.fetchone()
+            
+            if existing_user:
                 return jsonify({
-                    "success": False,
-                    "message": "Username already exists"
+                    'success': False,
+                    'message': 'Username already exists'
                 }), 409
             
             # Generate salt and hash password
@@ -158,27 +222,23 @@ def register():
             password_hash = hash_password(password, salt)
             
             # Insert new user
-            insert_query = """
-                INSERT INTO users (username, password_hash, salt, created_at) 
-                VALUES (%s, %s, %s, %s)
-            """
-            cursor.execute(insert_query, (username, password_hash, salt, datetime.now()))
+            cursor.execute(
+                "INSERT INTO users (username, password_hash, salt) VALUES (%s, %s, %s)",
+                (username, password_hash, salt)
+            )
             
-            user_id = cursor.lastrowid
-            
-            logger.info(f"New user registered: {username} (ID: {user_id})")
+            logger.info(f"New user registered: {username}")
             
             return jsonify({
-                "success": True,
-                "message": "User registered successfully",
-                "user_id": user_id
+                'success': True,
+                'message': 'User registered successfully'
             }), 201
             
         except Error as e:
             logger.error(f"Database error during registration: {e}")
             return jsonify({
-                "success": False,
-                "message": "Registration failed due to database error"
+                'success': False,
+                'message': 'Registration failed'
             }), 500
         
         finally:
@@ -188,8 +248,8 @@ def register():
     except Exception as e:
         logger.error(f"Registration error: {e}")
         return jsonify({
-            "success": False,
-            "message": "Internal server error"
+            'success': False,
+            'message': 'Internal server error'
         }), 500
 
 @app.route('/api/login', methods=['POST'])
@@ -200,8 +260,8 @@ def login():
         
         if not data:
             return jsonify({
-                "success": False,
-                "message": "No data provided"
+                'success': False,
+                'message': 'No data provided'
             }), 400
         
         username = data.get('username', '').strip()
@@ -210,22 +270,21 @@ def login():
         # Validate input
         if not username or not password:
             return jsonify({
-                "success": False,
-                "message": "Username and password are required"
+                'success': False,
+                'message': 'Username and password are required'
             }), 400
         
         # Connect to database
         conn = get_db_connection()
         if not conn:
             return jsonify({
-                "success": False,
-                "message": "Database connection failed"
+                'success': False,
+                'message': 'Database connection failed'
             }), 500
         
         cursor = conn.cursor(dictionary=True)
         
         try:
-            # Get user data
             cursor.execute(
                 "SELECT id, username, password_hash, salt FROM users WHERE username = %s", 
                 (username,)
@@ -233,44 +292,49 @@ def login():
             user = cursor.fetchone()
             
             if not user:
-                logger.warning(f"Login attempt with non-existent username: {username}")
                 return jsonify({
-                    "success": False,
-                    "message": "Invalid username or password"
+                    'success': False,
+                    'message': 'Invalid credentials'
                 }), 401
             
             # Verify password
             password_hash = hash_password(password, user['salt'])
             
             if password_hash == user['password_hash']:
-                # Update last login
-                cursor.execute(
-                    "UPDATE users SET last_login = %s WHERE id = %s",
-                    (datetime.now(), user['id'])
-                )
+                # Generate JWT token
+                token_payload = {
+                    'user_id': user['id'],
+                    'username': user['username'],
+                    'exp': datetime.utcnow() + timedelta(hours=24)
+                }
+                token = jwt.encode(token_payload, JWT_SECRET, algorithm='HS256')
                 
-                logger.info(f"Successful login: {username} (ID: {user['id']})")
+                # Update last login
+                cursor.execute("UPDATE users SET last_login = %s WHERE id = %s", 
+                             (datetime.now(), user['id']))
+                
+                logger.info(f"User logged in: {username}")
                 
                 return jsonify({
-                    "success": True,
-                    "message": "Login successful",
-                    "user": {
-                        "id": user['id'],
-                        "username": user['username']
+                    'success': True,
+                    'message': 'Login successful',
+                    'token': token,
+                    'user': {
+                        'id': user['id'],
+                        'username': user['username']
                     }
                 }), 200
             else:
-                logger.warning(f"Invalid password for user: {username}")
                 return jsonify({
-                    "success": False,
-                    "message": "Invalid username or password"
+                    'success': False,
+                    'message': 'Invalid credentials'
                 }), 401
                 
         except Error as e:
             logger.error(f"Database error during login: {e}")
             return jsonify({
-                "success": False,
-                "message": "Login failed due to database error"
+                'success': False,
+                'message': 'Login failed'
             }), 500
         
         finally:
@@ -280,67 +344,230 @@ def login():
     except Exception as e:
         logger.error(f"Login error: {e}")
         return jsonify({
-            "success": False,
-            "message": "Internal server error"
+            'success': False,
+            'message': 'Internal server error'
         }), 500
 
-@app.route('/api/check-username', methods=['POST'])
-def check_username():
-    """Check if username is available"""
+# NEW: VPN Configuration Generation Endpoint
+@app.route('/api/vpn/generate-config', methods=['POST'])
+@token_required
+def generate_vpn_config(current_user):
+    """Generate WireGuard configuration for user"""
     try:
-        data = request.get_json()
-        username = data.get('username', '').strip()
+        logger.info(f"Generating VPN config for user: {current_user['username']}")
         
-        if not username:
-            return jsonify({
-                "available": False,
-                "message": "Username is required"
-            }), 400
-        
-        # Validate username format
-        username_valid, username_msg = validate_username(username)
-        if not username_valid:
-            return jsonify({
-                "available": False,
-                "message": username_msg
-            }), 400
-        
-        # Connect to database
+        # Check if user already has an active config
         conn = get_db_connection()
         if not conn:
-            return jsonify({
-                "available": False,
-                "message": "Database connection failed"
-            }), 500
+            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
         
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         
-        try:
-            cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
-            user_exists = cursor.fetchone() is not None
+        # Check for existing active config
+        cursor.execute("""
+            SELECT * FROM vpn_configs 
+            WHERE user_id = %s AND is_active = 1
+            ORDER BY created_at DESC LIMIT 1
+        """, (current_user['id'],))
+        
+        existing_config = cursor.fetchone()
+        
+        if existing_config:
+            # Return existing config
+            config_text = create_client_config(
+                existing_config['client_private_key'],
+                existing_config['assigned_ip']
+            )
+            
+            cursor.close()
+            conn.close()
             
             return jsonify({
-                "available": not user_exists,
-                "message": "Username already taken" if user_exists else "Username available"
+                'success': True,
+                'config': config_text,
+                'client_ip': existing_config['assigned_ip'],
+                'message': 'Using existing configuration'
+            }), 200
+        
+        # Generate new key pair
+        try:
+            private_key = x25519.X25519PrivateKey.generate()
+            public_key = private_key.public_key()
+            
+            # Convert to WireGuard base64 format
+            private_key_bytes = private_key.private_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PrivateFormat.Raw,
+                encryption_algorithm=serialization.NoEncryption()
+            )
+            public_key_bytes = public_key.public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw
+            )
+            
+            client_private = base64.b64encode(private_key_bytes).decode('utf-8')
+            client_public = base64.b64encode(public_key_bytes).decode('utf-8')
+            
+        except Exception as e:
+            logger.error(f"Key generation failed: {e}")
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Key generation failed'}), 500
+        
+        # Get next available IP
+        assigned_ip = get_next_available_ip(cursor)
+        
+        # Create client config
+        config_text = create_client_config(client_private, assigned_ip)
+        
+        # Save to database
+        try:
+            insert_query = """
+                INSERT INTO vpn_configs 
+                (user_id, server_id, client_public_key, client_private_key, assigned_ip, is_active) 
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(insert_query, (
+                current_user['id'], 
+                1,  # Default server ID
+                client_public, 
+                client_private,
+                assigned_ip,
+                True
+            ))
+            
+            config_id = cursor.lastrowid
+            
+            # Update server configuration
+            success = update_server_config(client_public, assigned_ip)
+            if not success:
+                logger.warning(f"Failed to update server config for user {current_user['username']}")
+            
+            logger.info(f"New VPN config created for user {current_user['username']}, IP: {assigned_ip}")
+            
+            return jsonify({
+                'success': True,
+                'config': config_text,
+                'client_ip': assigned_ip,
+                'message': 'VPN configuration generated successfully'
             }), 200
             
         except Error as e:
-            logger.error(f"Database error checking username: {e}")
-            return jsonify({
-                "available": False,
-                "message": "Error checking username availability"
-            }), 500
+            logger.error(f"Database error saving VPN config: {e}")
+            return jsonify({'success': False, 'message': 'Failed to save configuration'}), 500
         
         finally:
             cursor.close()
             conn.close()
+        
+    except Exception as e:
+        logger.error(f"VPN config generation error: {e}")
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
+
+def get_next_available_ip(cursor):
+    """Find next available IP in 10.0.0.x range"""
+    try:
+        cursor.execute("SELECT assigned_ip FROM vpn_configs WHERE is_active = 1")
+        used_ips = set([row['assigned_ip'] for row in cursor.fetchall()])
+        
+        # Start from 10.0.0.2 (10.0.0.1 is server)
+        for i in range(2, 255):
+            ip = f"10.0.0.{i}"
+            if ip not in used_ips:
+                return ip
+        
+        raise Exception("No available IP addresses in range")
+    except Exception as e:
+        logger.error(f"IP assignment error: {e}")
+        raise
+
+def create_client_config(private_key, client_ip):
+    """Create WireGuard client configuration"""
+    return f"""[Interface]
+PrivateKey = {private_key}
+Address = {client_ip}/32
+DNS = 1.1.1.1, 8.8.8.8
+
+[Peer]
+PublicKey = {SERVER_PUBLIC_KEY}
+Endpoint = {SERVER_ENDPOINT}
+AllowedIPs = 0.0.0.0/0, ::/0
+PersistentKeepalive = 25
+"""
+
+def update_server_config(client_public_key, client_ip):
+    """Add new peer to server WireGuard config"""
+    try:
+        # Path to server config file
+        config_path = '/etc/wireguard/wg0.conf'
+        
+        # New peer configuration
+        new_peer = f"""
+# Client {client_ip}
+[Peer]
+PublicKey = {client_public_key}
+AllowedIPs = {client_ip}/32
+"""
+        
+        # Append to server config
+        with open(config_path, 'a') as f:
+            f.write(new_peer)
+        
+        # Reload WireGuard configuration
+        result = subprocess.run(['systemctl', 'reload', 'wg-quick@wg0'], 
+                              capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            logger.info(f"Server config updated successfully for IP {client_ip}")
+            return True
+        else:
+            logger.error(f"Failed to reload WireGuard: {result.stderr}")
+            return False
             
     except Exception as e:
-        logger.error(f"Username check error: {e}")
+        logger.error(f"Failed to update server config: {e}")
+        return False
+
+# NEW: VPN Connection Logging
+@app.route('/api/vpn/connect', methods=['POST'])
+@token_required
+def log_vpn_connection(current_user):
+    """Log VPN connection event"""
+    try:
+        data = request.get_json()
+        server_endpoint = data.get('server_endpoint', SERVER_ENDPOINT)
+        
+        logger.info(f"VPN connection logged for user {current_user['username']} to {server_endpoint}")
+        
         return jsonify({
-            "available": False,
-            "message": "Internal server error"
-        }), 500
+            'success': True,
+            'message': 'Connection logged successfully'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Connection logging error: {e}")
+        return jsonify({'success': False, 'message': 'Logging failed'}), 500
+
+@app.route('/api/vpn/disconnect', methods=['POST'])
+@token_required
+def log_vpn_disconnection(current_user):
+    """Log VPN disconnection event"""
+    try:
+        logger.info(f"VPN disconnection logged for user {current_user['username']}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Disconnection logged successfully'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Disconnection logging error: {e}")
+        return jsonify({'success': False, 'message': 'Logging failed'}), 500
+
+# Print configuration on startup
+print(f"🔑 Server Public Key: {SERVER_PUBLIC_KEY}")
+print(f"🌐 Server Endpoint: {SERVER_ENDPOINT}")
+print(f"🔐 JWT Secret configured: {'*' * len(JWT_SECRET)}")
 
 if __name__ == '__main__':
     # Test database connection on startup

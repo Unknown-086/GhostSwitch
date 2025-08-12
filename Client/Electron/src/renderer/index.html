@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline';">
+    <title>GhostSwitch VPN</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            min-width: 400px;
+            max-width: 600px;
+        }
+        
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            margin: 0 0 30px 0;
+            opacity: 0.8;
+            font-size: 1.1em;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+        }
+        
+        .test-section h3 {
+            margin-bottom: 15px;
+            color: #fff;
+            font-size: 1.2em;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 8px;
+            min-width: 160px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            border-left-color: #ff6b6b;
+        }
+        
+        .success {
+            color: #51cf66;
+            background: rgba(81, 207, 102, 0.1);
+            border-left-color: #51cf66;
+        }
+        
+        .warning {
+            color: #ffd43b;
+            background: rgba(255, 212, 59, 0.1);
+            border-left-color: #ffd43b;
+        }
+        
+        .results {
+            margin-top: 20px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .version-info {
+            font-size: 0.9em;
+            opacity: 0.7;
+            margin-top: 20px;
+        }
+        
+        .next-steps {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            text-align: left;
+        }
+        
+        .next-steps h4 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+        
+        .next-steps ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        
+        .next-steps li {
+            margin: 5px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .next-steps li:before {
+            content: "✅ ";
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ GhostSwitch VPN</h1>
+        <p class="subtitle">Secure. Private. Fast.</p>
+        
+        <div class="status" id="status">
+            Initializing Electron application...
+        </div>
+        
+        <div class="test-section">
+            <h3>System Tests</h3>
+            <button onclick="testElectronAPI()">Test Electron API</button>
+            <button onclick="testWireGuard()">Check WireGuard</button>
+            <button onclick="getAppVersion()">Get App Version</button>
+            <button onclick="testVPNConnection()">Test VPN Functions</button>
+        </div>
+        
+        <div class="results" id="results"></div>
+        
+        <div class="version-info" id="version-info">
+            Loading version information...
+        </div>
+        
+        <div class="next-steps">
+            <h4>🚀 Next Steps:</h4>
+            <ul>
+                <li>Basic Electron setup working</li>
+                <li>Create React components</li>
+                <li>Integrate your beautiful frontend</li>
+                <li>Connect to your VPN backend</li>
+                <li>Add WireGuard functionality</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Test functions
+        async function testElectronAPI() {
+            const resultsDiv = document.getElementById('results');
+            
+            if (window.electronAPI) {
+                resultsDiv.innerHTML = '<div class="status success">✅ Electron API is working!<br>Available functions: ' + Object.keys(window.electronAPI).join(', ') + '</div>';
+                console.log('ElectronAPI available:', Object.keys(window.electronAPI));
+            } else {
+                resultsDiv.innerHTML = '<div class="status error">❌ Electron API not found!</div>';
+            }
+        }
+        
+        async function getAppVersion() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                const version = await window.electronAPI.getAppVersion();
+                resultsDiv.innerHTML = `<div class="status success">✅ App Version: ${version}</div>`;
+                document.getElementById('version-info').textContent = `GhostSwitch VPN v${version}`;
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="status error">❌ Version Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testWireGuard() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                resultsDiv.innerHTML = '<div class="status warning">🔍 Checking WireGuard installation...</div>';
+                
+                const result = await window.electronAPI.checkWireGuard();
+                
+                if (result.installed) {
+                    resultsDiv.innerHTML = `<div class="status success">✅ WireGuard found: ${result.path}<br>Status: ${result.message}</div>`;
+                } else {
+                    resultsDiv.innerHTML = `<div class="status warning">⚠️ WireGuard not installed<br>Message: ${result.message}</div>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="status error">❌ WireGuard Check Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testVPNConnection() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                resultsDiv.innerHTML = '<div class="status warning">🔄 Testing VPN functions...</div>';
+                
+                // Test VPN status
+                const status = await window.electronAPI.getVPNStatus();
+                const stats = await window.electronAPI.getVPNStats();
+                
+                resultsDiv.innerHTML = `
+                    <div class="status success">
+                        ✅ VPN Functions Working!<br>
+                        📊 Current Status: ${status.status}<br>
+                        📈 Data Received: ${stats.bytesReceived} bytes<br>
+                        📉 Data Sent: ${stats.bytesSent} bytes<br>
+                        🚀 Speed: ${stats.speed}
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="status error">❌ VPN Test Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('status').innerHTML = 'Electron application ready!';
+            document.getElementById('status').className = 'status success';
+            
+            // Auto-test API availability
+            if (window.electronAPI) {
+                console.log('✅ ElectronAPI is available');
+                console.log('Available functions:', Object.keys(window.electronAPI));
+                try {
+                    const version = await window.electronAPI.getAppVersion();
+                    document.getElementById('version-info').textContent = `GhostSwitch VPN v${version}`;
+                } catch (error) {
+                    console.error('Version check failed:', error);
+                }
+            } else {
+                console.log('❌ ElectronAPI is NOT available');
+                document.getElementById('status').innerHTML = 'Electron API not available!';
+                document.getElementById('status').className = 'status error';
+            }
+        });
+    </script>
+</body>
+</html>

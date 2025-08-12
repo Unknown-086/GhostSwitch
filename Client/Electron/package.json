@@ -1,0 +1,44 @@
+{
+  "name": "ghostswitch-vpn",
+  "version": "1.0.0",
+  "description": "GhostSwitch VPN Client",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "electron": "electron .",
+    "electron:dev": "NODE_ENV=development electron .",
+    "dev": "concurrently \"npm run frontend:dev\" \"wait-on http://localhost:5173 && npm run electron:dev\"",
+    "frontend:dev": "cd ../../connect-wise-vpn-main/connect-wise-vpn-main && npm run dev",
+    "frontend:build": "cd ../../connect-wise-vpn-main/connect-wise-vpn-main && npm run build",
+    "build": "npm run frontend:build && electron-packager . GhostSwitch --platform=win32 --arch=x64 --out=dist/",
+    "dist": "npm run frontend:build && electron-builder"
+  },
+  "dependencies": {
+    "electron": "^28.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.0.0",
+    "electron-builder": "^24.0.0",
+    "concurrently": "^8.0.0",
+    "wait-on": "^7.0.0"
+  },
+  "build": {
+    "appId": "com.ghostswitch.vpn",
+    "productName": "GhostSwitch VPN",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "public/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "requestedExecutionLevel": "requireAdministrator"
+    }
+  }
+}

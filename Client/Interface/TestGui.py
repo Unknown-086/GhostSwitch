@@ -10,6 +10,8 @@ import queue
 import subprocess
 import platform
 
+# Import configuration
+from config import AppConfig
 
 class BackgroundWireGuardChecker:
     def __init__(self, callback_queue):
@@ -74,12 +76,14 @@ class GhostSwitchVPN:
     def __init__(self, master):
         # Creating the main window
         self.master = master
-        master.title("GhostSwitch")
+        self.config = AppConfig()  # Add this line
+        
+        master.title(self.config.WINDOW_TITLE)  # Use config
 
-        # Set ttkbootstrap style (superhero theme looks good for a VPN app)
-        self.style = Style(theme="superhero")
+        # Set ttkbootstrap style
+        self.style = Style(theme=self.config.THEME)  # Use config
 
-        self.API_BASE_URL = "http://51.112.111.180:5000/api"
+        self.API_BASE_URL = self.config.API_BASE_URL  # Use config
 
         # Create a queue for thread communication
         self.api_queue = queue.Queue()
@@ -89,14 +93,15 @@ class GhostSwitchVPN:
         self.wireguard_checker = BackgroundWireGuardChecker(self.api_queue)
 
         # Set application icon
-        icon_path = os.path.join(os.path.dirname(__file__), 'assets', 'ghostswitch_icon.ico')
+        icon_path = os.path.join(os.path.dirname(__file__), self.config.ICON_PATH)  # Use config
         if os.path.exists(icon_path):
             master.iconbitmap(icon_path)
 
-        # Configure window size - Made larger for VPN screen
-        master.geometry("500x600")
-        master.minsize(500, 600)
-        master.maxsize(500, 600)
+        # Configure window size - Use config
+        master.geometry(self.config.get_window_geometry())
+        if not self.config.WINDOW_RESIZABLE:
+            master.minsize(*self.config.get_window_size_tuple())
+            master.maxsize(*self.config.get_window_size_tuple())
 
         # Variables for login/signup
         self.username_var = tk.StringVar()
@@ -133,8 +138,8 @@ class GhostSwitchVPN:
         except queue.Empty:
             pass
         
-        # Schedule next check
-        self.master.after(100, self.check_api_responses)
+        # Use config for timing
+        self.master.after(self.config.API_QUEUE_CHECK_INTERVAL, self.check_api_responses)
 
     def handle_api_response(self, response_data):
         """Handle API responses on the main thread"""
@@ -147,25 +152,25 @@ class GhostSwitchVPN:
             if success:
                 self.current_user = data['username']
                 self.current_user_id = data['id']
-                self.login_status.set("Login successful!")
+                self.login_status.set(self.config.MESSAGES['login_success'])  # Use config
                 # Switch to VPN screen
                 self.master.after(1000, self.show_vpn_screen)
             else:
-                self.login_status.set(data.get('message', 'Login failed'))
+                self.login_status.set(data.get('message', self.config.MESSAGES['login_failed']))  # Use config
         
         elif action == 'signup':
             success = response_data['success']
             data = response_data['data']
             
             if success:
-                self.signup_status.set("Account created successfully!")
+                self.signup_status.set(self.config.MESSAGES['signup_success'])  # Use config
                 # Clear form fields
                 self.username_var.set("")
                 self.password_var.set("")
                 self.confirm_password_var.set("")
                 self.master.after(2000, self.show_login_screen)
             else:
-                self.signup_status.set(data.get('message', 'Registration failed'))
+                self.signup_status.set(data.get('message', self.config.MESSAGES['signup_failed']))  # Use config
         
         elif action == 'wireguard_check':
             self.wireguard_status = response_data['status']
