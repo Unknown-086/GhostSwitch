@@ -74,8 +74,37 @@ sudo sysctl -p
 sudo systemctl enable wg-quick@wg0
 sudo systemctl start wg-quick@wg0
 
+# sudo systemctl restart wg-quick@wg0
+
+
 
 echo "WireGuard server installation complete!"
 echo "Public key saved to /etc/wireguard/server_public.key"
 echo "Server public key: $(cat /etc/wireguard/server_public.key)"
 echo "Using network interface: $MAIN_INTERFACE"
+
+
+
+
+
+
+
+
+sudo ip link add wg0 type wireguard
+sudo ip addr add 10.0.0.1/24 dev wg0
+sudo wg set wg0 private-key /home/ubuntu/wireguard/private.key
+sudo ip link set wg0 up
+
+ubuntu@ip-172-31-25-40:~/wireguard$ sudo wg
+interface: wg0
+  public key: o291/+n/NiYINVYVQkMzFgQ+0+ygv6OEf+jAF3EXmEo=
+  private key: (hidden)
+  listening port: 44956
+ubuntu@ip-172-31-25-40:~/wireguard$
+
+sudo wg set wg0 peer <Public Key> allowed-ips 10.0.0.2/32
+
+sudo echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
+sudo iptables -t nat -A POSTROUTING -o ens5 -j MASQUERADE

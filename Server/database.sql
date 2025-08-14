@@ -56,3 +56,8 @@ CREATE TABLE connection_logs (
 
 -- Add is_active column to vpn_configs if it doesn't exist
 ALTER TABLE vpn_configs ADD COLUMN is_active BOOLEAN DEFAULT TRUE; CREATE TABLE connection_logs ( id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, action ENUM('connect', 'disconnect') NOT NULL, server_endpoint VARCHAR(100), timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) );
+
+
+
+-- Add your real server to the database
+INSERT INTO servers (name, location, public_ip, endpoint, public_key, status) VALUES ('Dubai Server', 'Dubai, UAE', '51.112.111.180', '51.112.111.180:51820', '198Q3PykQ81WMNpy3FuO978z+y4iTk9ssNzi9KzCF3o=', 'active');

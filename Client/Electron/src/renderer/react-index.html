@@ -3,474 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://51.112.111.180:5000;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' http://51.112.111.180:5000 http://3.28.190.141:5000; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
     <title>GhostSwitch VPN</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            min-height: 100vh; /* Changed from height: 100vh */
-            margin: 0;
-            /* Removed overflow: hidden */
-        }
-        
-        .app {
-            min-height: 100vh; /* Changed from height: 100vh */
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .container {
-            flex: 1;
-            padding: 20px; /* Reduced from 40px for mobile */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow-y: auto; /* Added scrolling */
-            max-height: 100vh; /* Limit height */
-        }
-        
-        .card {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 30px; /* Reduced from 40px */
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            text-align: center;
-            min-width: 400px;
-            max-width: 500px;
-            max-height: 90vh; /* Limit card height */
-            overflow-y: auto; /* Make card scrollable */
-            margin: 20px 0; /* Add vertical margin */
-        }
-        
-        .title {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-        
-        .subtitle {
-            font-size: 1.1em;
-            opacity: 0.8;
-            margin-bottom: 30px;
-        }
-        
-        .status {
-            margin: 20px 0;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            border-left: 4px solid #4CAF50;
-            text-align: left;
-        }
-        
-        .form-group {
-            margin: 20px 0;
-        }
-        
-        .form-input {
-            width: 100%;
-            padding: 12px 16px;
-            margin: 8px 0;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 1em;
-            transition: all 0.3s ease;
-        }
-        
-        .form-input:focus {
-            outline: none;
-            border-color: #4CAF50;
-            background: rgba(255, 255, 255, 0.15);
-        }
-        
-        .form-input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-        
-        .btn {
-            background: linear-gradient(45deg, #4CAF50, #45a049);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            margin: 8px;
-            min-width: 160px;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-        }
-        
-        .btn:active {
-            transform: translateY(0);
-        }
-        
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .btn-danger {
-            background: linear-gradient(45deg, #f44336, #d32f2f);
-        }
-        
-        .btn-danger:hover {
-            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
-        }
-        
-        .btn-secondary {
-            background: linear-gradient(45deg, #757575, #616161);
-        }
-        
-        .btn-secondary:hover {
-            box-shadow: 0 4px 12px rgba(117, 117, 117, 0.4);
-        }
-        
-        .btn-link {
-            background: none;
-            color: #4CAF50;
-            text-decoration: underline;
-            border: none;
-            cursor: pointer;
-            font-size: 0.9em;
-            margin: 10px 0;
-            padding: 5px 10px;
-        }
-        
-        .btn-link:hover {
-            color: #66BB6A;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        .vpn-status {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 20px 0;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-        }
-        
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 10px;
-            display: inline-block;
-        }
-        
-        .status-disconnected {
-            background-color: #f44336;
-        }
-        
-        .status-connected {
-            background-color: #4CAF50;
-        }
-        
-        .status-connecting {
-            background-color: #FF9800;
-            animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .loading-spinner {
-            width: 30px;
-            height: 30px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 10px auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .auth-tabs {
-            display: flex;
-            margin-bottom: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 5px;
-        }
-
-        .auth-tab {
-            flex: 1;
-            padding: 10px;
-            background: none;
-            border: none;
-            color: rgba(255, 255, 255, 0.7);
-            cursor: pointer;
-            border-radius: 5px;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-
-        .auth-tab.active {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-        }
-
-        .auth-tab:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: white;
-        }
-
-        .server-selector {
-            margin: 15px 0;
-            text-align: left;
-            max-height: 300px; /* Limit height */
-            overflow-y: auto; /* Make scrollable */
-        }
-
-        .server-option {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            margin: 5px 0;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .server-option:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .server-option.selected {
-            background: rgba(76, 175, 80, 0.3);
-            border-left: 4px solid #4CAF50;
-        }
-
-        .server-flag {
-            font-size: 1.5em;
-            margin-right: 10px;
-        }
-
-        .server-info {
-            flex: 1;
-        }
-
-        .server-name {
-            font-weight: 600;
-        }
-
-        .server-location {
-            font-size: 0.9em;
-            opacity: 0.8;
-        }
-
-        .server-ping {
-            color: #4CAF50;
-            font-size: 0.9em;
-        }
-
-        /* Custom scrollbar styling */
-        .card::-webkit-scrollbar,
-        .server-selector::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .card::-webkit-scrollbar-track,
-        .server-selector::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-        }
-
-        .card::-webkit-scrollbar-thumb,
-        .server-selector::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
-        }
-
-        .card::-webkit-scrollbar-thumb:hover,
-        .server-selector::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
-        }
-
-        /* Add responsive design for mobile */
-        @media (max-width: 768px) {
-            .card {
-                min-width: 90%;
-                max-width: 90%;
-                padding: 20px;
-                margin: 10px;
-            }
-            
-            .container {
-                padding: 10px;
-            }
-            
-            .title {
-                font-size: 2em; /* Smaller on mobile */
-            }
-        }
-    </style>
+    <!-- ✅ LINK TO EXTERNAL CSS FILE -->
+    <link rel="stylesheet" href="react-index.css">
 </head>
 <body>
-    <div class="app">
-        <!-- Authentication Screen (Login/Signup) -->
-        <div id="authScreen" class="container">
-            <div class="card">
-                <h1 class="title">🛡️ GhostSwitch VPN</h1>
-                <p class="subtitle">Secure. Private. Fast.</p>
-                
-                <div class="status" id="systemStatus">
-                    <strong>System Status:</strong><br/>
-                    <span id="appVersion">App Version: Loading...</span><br/>
-                    <span id="wireGuardStatus">WireGuard: Checking...</span><br/>
-                    <span id="backendStatus">Backend: Checking...</span>
+    <!-- Authentication Screen -->
+    <div id="authScreen" class="main-container">
+        <div class="app-card">
+            
+            <!-- Header Section -->
+            <div class="app-header">
+                <div class="app-logo">
+                    <div class="shield-icon">🛡️</div>
+                    <h1 class="app-title">GhostSwitch VPN</h1>
                 </div>
+                <p class="app-subtitle">Secure. Private. Fast.</p>
+            </div>
 
-                <!-- Auth Tabs -->
+            <!-- System Status -->
+            <div class="system-status">
+                <div class="status-title">System Status:</div>
+                <div class="status-item">
+                    <span class="status-text" id="appVersion">App Version: 1.0.0</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-icon success">✓</span>
+                    <span class="status-text" id="wireGuardStatus">WireGuard: Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-icon success">✓</span>
+                    <span class="status-text" id="backendStatus">Backend: Testing...</span>
+                </div>
+            </div>
+
+            <!-- Authentication Container -->
+            <div class="auth-container">
+                
+                <!-- Tab Navigation -->
                 <div class="auth-tabs">
-                    <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
-                    <button class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</button>
+                    <button id="loginTab" class="auth-tab active" onclick="switchAuthTab('login')">
+                        Login
+                    </button>
+                    <button id="signupTab" class="auth-tab" onclick="switchAuthTab('signup')">
+                        Sign Up
+                    </button>
                 </div>
 
                 <!-- Login Form -->
-                <div id="loginForm">
-                    <h3>Login to Continue</h3>
-                    <div class="form-group">
-                        <input 
-                            type="text" 
-                            id="loginUsername"
-                            placeholder="Username" 
-                            class="form-input"
-                            value=""
-                        />
-                        <input 
-                            type="password" 
-                            id="loginPassword"
-                            placeholder="Password" 
-                            class="form-input"
-                            value=""
-                        />
-                    </div>
-                    
-                    <button class="btn" onclick="handleLogin()" id="loginBtn">
-                        <span id="loginButtonText">Login</span>
-                        <div id="loginSpinner" class="loading-spinner hidden"></div>
-                    </button>
+                <div id="loginForm" class="auth-form active">
+                    <h2>Welcome Back</h2>
+                    <form onsubmit="event.preventDefault(); handleLogin();">
+                        <div class="input-group">
+                            <input 
+                                type="text" 
+                                id="loginUsername" 
+                                placeholder="Username" 
+                                required 
+                                class="form-input"
+                            />
+                        </div>
+                        <div class="input-group">
+                            <input 
+                                type="password" 
+                                id="loginPassword" 
+                                placeholder="Password" 
+                                required 
+                                class="form-input"
+                            />
+                        </div>
+                        <button type="submit" class="auth-button primary" id="loginBtn">
+                            <span id="loginButtonText">Login</span>
+                        </button>
+                    </form>
                 </div>
 
                 <!-- Signup Form -->
-                <div id="signupForm" class="hidden">
-                    <h3>Create New Account</h3>
-                    <div class="form-group">
-                        <input 
-                            type="text" 
-                            id="signupUsername"
-                            placeholder="Username" 
-                            class="form-input"
-                        />
-                        <input 
-                            type="email" 
-                            id="signupEmail"
-                            placeholder="Email (optional)" 
-                            class="form-input"
-                        />
-                        <input 
-                            type="password" 
-                            id="signupPassword"
-                            placeholder="Password" 
-                            class="form-input"
-                        />
-                        <input 
-                            type="password" 
-                            id="signupConfirmPassword"
-                            placeholder="Confirm Password" 
-                            class="form-input"
-                        />
-                    </div>
-                    
-                    <button class="btn" onclick="handleSignup()" id="signupBtn">
-                        <span id="signupButtonText">Create Account</span>
-                        <div id="signupSpinner" class="loading-spinner hidden"></div>
-                    </button>
+                <div id="signupForm" class="auth-form hidden">
+                    <h2>Create New Account</h2>
+                    <form onsubmit="handleSignup(event)">
+                        <div class="input-row">
+                            <div class="input-group">
+                                <input 
+                                    type="text" 
+                                    id="signupUsername" 
+                                    placeholder="Username" 
+                                    required 
+                                    class="form-input"
+                                    minlength="3"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <input 
+                                    type="email" 
+                                    id="signupEmail" 
+                                    placeholder="Email (optional)" 
+                                    class="form-input"
+                                />
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <input 
+                                    type="password" 
+                                    id="signupPassword" 
+                                    placeholder="Password" 
+                                    required 
+                                    class="form-input"
+                                    minlength="6"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <input 
+                                    type="password" 
+                                    id="signupConfirmPassword" 
+                                    placeholder="Confirm Password" 
+                                    required 
+                                    class="form-input"
+                                    minlength="6"
+                                />
+                            </div>
+                        </div>
+                        <button type="submit" class="auth-button success">
+                            Create Account
+                        </button>
+                    </form>
                 </div>
+
+                <!-- Message Display -->
+                <div id="authMessage" class="auth-message hidden"></div>
                 
-                <div id="authMessage" style="margin-top: 15px; font-size: 0.9em;"></div>
             </div>
         </div>
+    </div>
 
-        <!-- Dashboard Screen -->
-        <div id="dashboardScreen" class="container hidden">
-            <div class="card">
-                <h1 class="title">🛡️ VPN Dashboard</h1>
-                <p class="subtitle">Connected as <span id="currentUser">Test User</span></p>
+    <!-- Dashboard Screen -->
+    <div id="dashboardScreen" class="main-container hidden">
+        <div class="app-card">
+            <div class="app-header">
+                <div class="app-logo">
+                    <div class="shield-icon">🛡️</div>
+                    <h1 class="app-title">VPN Dashboard</h1>
+                </div>
+                <p class="app-subtitle">Connected as <span id="currentUser">User</span></p>
+            </div>
+            
+            <div class="system-status">
+                <div class="status-title">VPN Status:</div>
+                <div class="status-item">
+                    <span id="statusIndicator" class="status-icon error">●</span>
+                    <span class="status-text" id="vpnStatusText">Disconnected</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-text">Server: <span id="currentServer">None</span></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-text" id="connectionIP">IP: Not connected</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-text" id="connectionTime">Duration: 00:00:00</span>
+                </div>
+            </div>
+
+            <!-- Server Selection -->
+            <div class="auth-container">
+                <h3 style="color: white; margin-bottom: 16px;">Select VPN Server:</h3>
+                <div id="serverList" style="max-height: 300px; overflow-y: auto;">
+                    <!-- Servers will be populated here -->
+                </div>
                 
-                <div class="vpn-status">
-                    <div>
-                        <span id="statusIndicator" class="status-indicator status-disconnected"></span>
-                        <strong>Status:</strong> <span id="vpnStatusText">Disconnected</span>
-                    </div>
-                    <div>
-                        <strong>Server:</strong> <span id="currentServer">None</span>
-                    </div>
-                </div>
-
-                <!-- Server Selection -->
-                <div class="server-selector">
-                    <h4>Select VPN Server:</h4>
-                    <div id="serverList">
-                        <!-- Servers will be populated here -->
-                    </div>
-                </div>
-
-                <div class="status">
-                    <strong>Connection Details:</strong><br/>
-                    <span id="connectionIP">IP: Not connected</span><br/>
-                    <span id="connectionTime">Duration: 00:00:00</span><br/>
-                    <span id="dataTransfer">Data: 0 B sent, 0 B received</span>
-                </div>
-
-                <div>
-                    <button id="connectBtn" class="btn" onclick="handleConnect()">
+                <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button id="connectBtn" class="auth-button success" onclick="handleConnect()">
                         Connect VPN
                     </button>
                     
-                    <button id="disconnectBtn" class="btn btn-danger hidden" onclick="handleDisconnect()">
+                    <button id="disconnectBtn" class="auth-button primary hidden" onclick="handleDisconnect()">
                         Disconnect VPN
                     </button>
                     
-                    <button class="btn btn-secondary" onclick="refreshStats()">
+                    <button class="auth-button primary" onclick="refreshStats()" style="background: linear-gradient(135deg, #757575 0%, #616161 100%);">
                         Refresh Stats
                     </button>
                     
-                    <button class="btn btn-danger" onclick="handleLogout()">
+                    <button class="auth-buttfon primary" onclick="handleLogout()" style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">
                         Logout
                     </button>
                 </div>
@@ -478,8 +194,14 @@
         </div>
     </div>
 
+    <!-- Include your real-api.js -->
     <script src="services/real-api.js"></script>
+    
+    <!-- Include your JavaScript (keeping existing functions) -->
     <script>
+        // Your existing JavaScript code goes here
+        // (All the functions from your current HTML)
+        
         // Global state
         let currentVpnStatus = 'disconnected';
         let currentUser = null;
@@ -488,6 +210,7 @@
         let selectedServer = null;
 
         // Initialize app
+        // Add to your event listeners in react-index.html
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('App initializing...');
             await loadSystemInfo();
@@ -496,7 +219,20 @@
             if (window.electronAPI && window.electronAPI.onVPNStatusChanged) {
                 window.electronAPI.onVPNStatusChanged(handleVPNStatusChange);
             }
+            
+            // Add this new listener
+            if (window.electronAPI && window.electronAPI.onVPNActivationRequired) {
+                window.electronAPI.onVPNActivationRequired(handleVPNActivationRequired);
+            }
         });
+
+        // Add this new function
+        function handleVPNActivationRequired(data) {
+            console.log('🔔 VPN activation required:', data);
+            
+            // Show a notification to the user
+            showMessage(`Please activate the "${data.configName}" tunnel in the WireGuard window that opened`, 'info');
+        }
 
         // Load system information
         async function loadSystemInfo() {
@@ -504,22 +240,150 @@
                 if (window.electronAPI) {
                     // Get app version
                     const version = await window.electronAPI.getAppVersion();
-                    document.getElementById('appVersion').textContent = `App Version: ${version}`;
+                    const appVersionEl = document.getElementById('appVersion');
+                    if (appVersionEl) {
+                        appVersionEl.textContent = `App Version: ${version}`;
+                    }
 
-                    // Check WireGuard
-                    const wgResult = await window.electronAPI.checkWireGuard();
-                    const wgStatus = wgResult.installed ? '✅ Installed' : '❌ Not Installed';
-                    document.getElementById('wireGuardStatus').textContent = `WireGuard: ${wgStatus}`;
+                    // Check WireGuard with enhanced detection
+                    await checkWireGuardStatus();
 
                     // Test backend connection
                     await testBackendConnection();
 
                     // Get initial VPN status
                     const vpnStatus = await window.electronAPI.getVPNStatus();
-                    updateVPNStatus(vpnStatus.status);
+                    updateVPNStatus(vpnStatus.status || 'disconnected');
                 }
             } catch (error) {
                 console.error('Failed to load system info:', error);
+            }
+        }
+
+        // Enhanced WireGuard status checker
+        async function checkWireGuardStatus() {
+            try {
+                const wgStatusElement = document.getElementById('wireGuardStatus');
+                if (wgStatusElement) {
+                    wgStatusElement.textContent = 'WireGuard: Checking...';
+                    wgStatusElement.style.color = '#FF9800';
+                }
+                
+                // Use enhanced detection
+                const wgResult = await window.electronAPI.checkWireGuardAdvanced();
+                
+                if (wgResult.installed) {
+                    if (wgStatusElement) {
+                        const version = wgResult.version.split(' ')[0] || 'Installed';
+                        wgStatusElement.textContent = `WireGuard: ✅ ${version}`;
+                        wgStatusElement.style.color = '#4CAF50';
+                    }
+                    
+                    // Hide install button if exists
+                    const installBtn = document.getElementById('wireGuardInstallBtn');
+                    if (installBtn) {
+                        installBtn.style.display = 'none';
+                    }
+                } else {
+                    if (wgStatusElement) {
+                        wgStatusElement.textContent = 'WireGuard: ❌ Not Installed';
+                        wgStatusElement.style.color = '#f44336';
+                    }
+                    
+                    // Show install button
+                    showWireGuardInstallButton();
+                }
+                
+                return wgResult;
+            } catch (error) {
+                console.error('WireGuard check failed:', error);
+                const wgStatusElement = document.getElementById('wireGuardStatus');
+                if (wgStatusElement) {
+                    wgStatusElement.textContent = 'WireGuard: ❌ Check Failed';
+                    wgStatusElement.style.color = '#f44336';
+                }
+                return { installed: false, error: error.message };
+            }
+        }
+
+        // Show WireGuard install button on login screen
+        function showWireGuardInstallButton() {
+            const systemStatus = document.querySelector('.system-status');
+            const existingBtn = document.getElementById('wireGuardInstallBtn');
+            
+            if (!existingBtn && systemStatus) {
+                const installBtnHTML = `
+                    <div class="status-item">
+                        <button id="wireGuardInstallBtn" onclick="installWireGuardSilent()" class="auth-button success" style="
+                            padding: 8px 16px;
+                            font-size: 0.9em;
+                            margin-top: 10px;
+                        ">🛠️ Install WireGuard</button>
+                    </div>
+                `;
+                
+                systemStatus.insertAdjacentHTML('beforeend', installBtnHTML);
+            }
+        }
+
+        // Silent WireGuard installation from login screen
+        async function installWireGuardSilent() {
+            try {
+                const installBtn = document.getElementById('wireGuardInstallBtn');
+                const originalText = installBtn ? installBtn.textContent : '';
+                
+                if (installBtn) {
+                    installBtn.textContent = '📥 Downloading...';
+                    installBtn.disabled = true;
+                    installBtn.style.background = '#FF9800';
+                }
+                
+                console.log('🛠️ Starting WireGuard installation process...');
+                
+                const result = await window.electronAPI.installWireGuardSilent();
+                
+                if (result.success) {
+                    if (installBtn) {
+                        installBtn.textContent = '✅ Installed!';
+                        installBtn.style.background = '#4CAF50';
+                    }
+                    
+                    // Refresh WireGuard status after 2 seconds
+                    setTimeout(async () => {
+                        await checkWireGuardStatus();
+                        if (installBtn && installBtn.style.display !== 'none') {
+                            installBtn.style.display = 'none';
+                        }
+                    }, 2000);
+                    
+                } else {
+                    throw new Error(result.message);
+                }
+                
+            } catch (error) {
+                console.error('❌ Installation failed:', error);
+                
+                const installBtn = document.getElementById('wireGuardInstallBtn');
+                if (installBtn) {
+                    installBtn.textContent = '❌ Failed - Try Manual';
+                    installBtn.style.background = '#f44336';
+                    installBtn.disabled = false;
+                    
+                    // Change to manual download on click
+                    installBtn.onclick = async () => {
+                        console.log('🔗 Opening manual download...');
+                        await window.electronAPI.downloadWireGuard();
+                        installBtn.textContent = '🌐 Download Opened';
+                        installBtn.style.background = '#2196F3';
+                    };
+                    
+                    // Reset after 5 seconds
+                    setTimeout(() => {
+                        installBtn.textContent = '🛠️ Install WireGuard';
+                        installBtn.style.background = '#4CAF50';
+                        installBtn.onclick = installWireGuardSilent;
+                    }, 5000);
+                }
             }
         }
 
@@ -549,21 +413,27 @@
         function switchAuthTab(tab) {
             const loginForm = document.getElementById('loginForm');
             const signupForm = document.getElementById('signupForm');
-            const tabs = document.querySelectorAll('.auth-tab');
+            const loginTab = document.getElementById('loginTab');
+            const signupTab = document.getElementById('signupTab');
+            const authMessage = document.getElementById('authMessage');
             
             // Clear messages
-            document.getElementById('authMessage').innerHTML = '';
+            authMessage.classList.add('hidden');
             
             if (tab === 'login') {
                 loginForm.classList.remove('hidden');
+                loginForm.classList.add('active');
                 signupForm.classList.add('hidden');
-                tabs[0].classList.add('active');
-                tabs[1].classList.remove('active');
+                signupForm.classList.remove('active');
+                loginTab.classList.add('active');
+                signupTab.classList.remove('active');
             } else {
                 loginForm.classList.add('hidden');
+                loginForm.classList.remove('active');
                 signupForm.classList.remove('hidden');
-                tabs[0].classList.remove('active');
-                tabs[1].classList.add('active');
+                signupForm.classList.add('active');
+                loginTab.classList.remove('active');
+                signupTab.classList.add('active');
             }
         }
 
@@ -573,11 +443,10 @@
             const password = document.getElementById('loginPassword').value;
             const messageDiv = document.getElementById('authMessage');
             const buttonText = document.getElementById('loginButtonText');
-            const spinner = document.getElementById('loginSpinner');
             const button = document.getElementById('loginBtn');
 
             if (!username || !password) {
-                messageDiv.innerHTML = '<span style="color: #f44336;">Please enter username and password</span>';
+                showMessage('Please enter username and password', 'error');
                 return;
             }
 
@@ -585,8 +454,7 @@
                 // Show loading
                 button.disabled = true;
                 buttonText.textContent = 'Logging in...';
-                spinner.classList.remove('hidden');
-                messageDiv.innerHTML = '<span style="color: #FF9800;">Connecting to server...</span>';
+                showMessage('Connecting to server...', 'info');
 
                 console.log('Attempting login for:', username);
 
@@ -605,7 +473,7 @@
                     document.getElementById('authScreen').classList.add('hidden');
                     document.getElementById('dashboardScreen').classList.remove('hidden');
 
-                    messageDiv.innerHTML = `<span style="color: #4CAF50;">${loginResult.message}</span>`;
+                    showMessage(loginResult.message, 'success');
                     
                     console.log('Login successful:', loginResult);
                 } else {
@@ -613,348 +481,614 @@
                 }
             } catch (error) {
                 console.error('Login failed:', error);
-                messageDiv.innerHTML = `<span style="color: #f44336;">Login failed: ${error.message}</span>`;
+                showMessage(`Login failed: ${error.message}`, 'error');
             } finally {
                 button.disabled = false;
                 buttonText.textContent = 'Login';
-                spinner.classList.add('hidden');
             }
         }
 
         // Handle signup
-        async function handleSignup() {
-            const username = document.getElementById('signupUsername').value;
-            const email = document.getElementById('signupEmail').value;
-            const password = document.getElementById('signupPassword').value;
-            const confirmPassword = document.getElementById('signupConfirmPassword').value;
-            const messageDiv = document.getElementById('authMessage');
-            const buttonText = document.getElementById('signupButtonText');
-            const spinner = document.getElementById('signupSpinner');
-            const button = document.getElementById('signupBtn');
-
-            // Validation
-            if (!username || !password || !confirmPassword) {
-                messageDiv.innerHTML = '<span style="color: #f44336;">Please fill in all required fields</span>';
-                return;
-            }
-
-            if (password !== confirmPassword) {
-                messageDiv.innerHTML = '<span style="color: #f44336;">Passwords do not match</span>';
-                return;
-            }
-
-            if (password.length < 6) {
-                messageDiv.innerHTML = '<span style="color: #f44336;">Password must be at least 6 characters</span>';
-                return;
-            }
-
+        async function handleSignup(event) {
+            event.preventDefault();
+            
             try {
-                // Show loading
-                button.disabled = true;
-                buttonText.textContent = 'Creating Account...';
-                spinner.classList.remove('hidden');
-                messageDiv.innerHTML = '<span style="color: #FF9800;">Creating your account...</span>';
-
-                console.log('Attempting signup for:', username);
-
-                // Real signup attempt
-                const signupResult = await window.realAPI.register(username, password, email);
-
-                if (signupResult.success) {
-                    messageDiv.innerHTML = `<span style="color: #4CAF50;">${signupResult.message}</span>`;
-                    
-                    // Auto-fill login form and switch to login tab
-                    setTimeout(() => {
-                        document.getElementById('loginUsername').value = username;
-                        document.getElementById('loginPassword').value = password;
-                        switchAuthTab('login');
-                        messageDiv.innerHTML = '<span style="color: #4CAF50;">Account created! Please login with your credentials.</span>';
-                    }, 1500);
-                    
-                    console.log('Signup successful:', signupResult);
-                } else {
-                    throw new Error(signupResult.message);
+                console.log('🔄 Signup form submitted');
+                
+                const usernameInput = document.getElementById('signupUsername');
+                const emailInput = document.getElementById('signupEmail');
+                const passwordInput = document.getElementById('signupPassword');
+                const confirmPasswordInput = document.getElementById('signupConfirmPassword');
+                
+                if (!usernameInput || !passwordInput) {
+                    throw new Error('Required form elements not found');
                 }
+                
+                const username = usernameInput.value;
+                const email = emailInput ? emailInput.value : '';
+                const password = passwordInput.value;
+                const confirmPassword = confirmPasswordInput ? confirmPasswordInput.value : password;
+                
+                console.log('🔍 Form values:', {
+                    username,
+                    email,
+                    passwordLength: password ? password.length : 0
+                });
+                
+                // Validate inputs
+                if (!username || username.trim().length < 3) {
+                    showMessage('Username must be at least 3 characters long', 'error');
+                    return;
+                }
+                
+                if (!password || password.length < 6) {
+                    showMessage(`Password must be at least 6 characters long (you entered ${password ? password.length : 0} characters)`, 'error');
+                    return;
+                }
+                
+                if (confirmPassword && password !== confirmPassword) {
+                    showMessage('Passwords do not match', 'error');
+                    return;
+                }
+                
+                // Show loading state
+                const submitButton = event.target.querySelector('button[type="submit"]');
+                const originalText = submitButton ? submitButton.textContent : '';
+                if (submitButton) {
+                    submitButton.textContent = 'Creating Account...';
+                    submitButton.disabled = true;
+                }
+                
+                console.log('📝 Calling realAPI.register...');
+                const result = await window.realAPI.register(username, password, email);
+                
+                if (result.success) {
+                    console.log('✅ Registration successful!');
+                    showMessage('Account created successfully! Please login.', 'success');
+                    
+                    // Clear form
+                    event.target.reset();
+                    
+                    // Switch to login tab after 2 seconds
+                    setTimeout(() => {
+                        switchAuthTab('login');
+                        document.getElementById('loginUsername').value = username;
+                    }, 2000);
+                    
+                } else {
+                    console.error('❌ Registration failed:', result.message);
+                    showMessage(`Signup failed: ${result.message}`, 'error');
+                }
+                
             } catch (error) {
-                console.error('Signup failed:', error);
-                messageDiv.innerHTML = `<span style="color: #f44336;">Signup failed: ${error.message}</span>`;
+                console.error('❌ Signup error:', error);
+                showMessage(`Signup failed: ${error.message}`, 'error');
             } finally {
-                button.disabled = false;
-                buttonText.textContent = 'Create Account';
-                spinner.classList.add('hidden');
+                const submitButton = event.target.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    submitButton.textContent = 'Create Account';
+                    submitButton.disabled = false;
+                }
             }
         }
 
-        // Load VPN servers and populate UI
+        // Show message function
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('authMessage');
+            messageDiv.textContent = text;
+            messageDiv.className = `auth-message ${type}`;
+            messageDiv.classList.remove('hidden');
+            
+            // Auto hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.classList.add('hidden');
+                }, 5000);
+            }
+        }
+
+        // Load VPN servers
         async function loadVPNServers() {
             try {
-                console.log('Loading VPN servers...');
-                const serversResult = await window.realAPI.getVPNServers();
+                console.log('🌐 Loading VPN servers from real API...');
                 
-                window.availableServers = serversResult.servers;
-                console.log('VPN servers loaded:', serversResult.servers);
-                
-                // Update UI to show available servers
-                updateServersList(serversResult.servers);
-                
-                // Select first server by default
-                if (serversResult.servers.length > 0) {
-                    selectServer(serversResult.servers[0]);
+                const serverList = document.getElementById('serverList');
+                if (serverList) {
+                    serverList.innerHTML = '<div style="text-align: center; color: #FF9800; padding: 20px;">🔄 Loading servers...</div>';
                 }
+                
+                const result = await window.realAPI.getVPNServers();
+                
+                if (result.success && result.servers) {
+                    displayVPNServers(result.servers);
+                    console.log('✅ Loaded', result.servers.length, 'servers from backend');
+                } else {
+                    throw new Error(result.message || 'Failed to load servers');
+                }
+                
             } catch (error) {
-                console.error('Failed to load VPN servers:', error);
+                console.error('❌ Failed to load VPN servers:', error);
+                
+                const serverList = document.getElementById('serverList');
+                if (serverList) {
+                    serverList.innerHTML = `
+                        <div style="color: #f44336; padding: 20px; text-align: center; background: rgba(244, 67, 54, 0.1); border-radius: 8px;">
+                            ❌ Failed to load servers: ${error.message}
+                            <br><br>
+                            <button onclick="loadVPNServers()" class="auth-button primary" style="padding: 8px 16px; font-size: 0.9em;">
+                                🔄 Retry
+                            </button>
+                        </div>
+                    `;
+                }
             }
         }
 
-        // Update servers list in UI
-        function updateServersList(servers) {
+        function displayVPNServers(servers) {
             const serverList = document.getElementById('serverList');
-            serverList.innerHTML = '';
+            if (!serverList) {
+                console.error('❌ serverList element not found');
+                return;
+            }
+            
+            console.log('🖥️ Displaying servers:', servers);
+            
+            if (!servers || servers.length === 0) {
+                serverList.innerHTML = '<div style="text-align: center; padding: 20px; color: rgba(255, 255, 255, 0.6);">No servers available</div>';
+                return;
+            }
+            
+            let serversHTML = '';
             
             servers.forEach(server => {
-                const serverElement = document.createElement('div');
-                serverElement.className = 'server-option';
-                serverElement.onclick = () => selectServer(server);
+                const isSelected = selectedServer && selectedServer.id === server.id;
                 
-                serverElement.innerHTML = `
-                    <div class="server-flag">${server.flag || '🌐'}</div>
-                    <div class="server-info">
-                        <div class="server-name">${server.name}</div>
-                        <div class="server-location">${server.location}</div>
+                serversHTML += `
+                    <div class="server-item ${isSelected ? 'selected' : ''}" 
+                         onclick="selectServer(${server.id}, '${server.name}', '${server.location}', '${server.endpoint}')"
+                         data-server-id="${server.id}"
+                         style="
+                            display: flex;
+                            align-items: center;
+                            padding: 12px;
+                            margin: 5px 0;
+                            background: rgba(255, 255, 255, 0.05);
+                            border-radius: 8px;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                            border: 2px solid ${isSelected ? '#4CAF50' : 'transparent'};
+                         ">
+                        <div style="font-size: 1.8em; margin-right: 15px; min-width: 40px;">
+                            ${server.flag || '🌍'}
+                        </div>
+                        <div style="flex: 1; text-align: left;">
+                            <div style="font-weight: 600; font-size: 1.1em; color: white;">
+                                ${server.name}
+                            </div>
+                            <div style="font-size: 0.9em; opacity: 0.8; color: rgba(255, 255, 255, 0.7); margin-top: 2px;">
+                                ${server.location}
+                            </div>
+                        </div>
+                        <div style="color: #4CAF50; font-size: 0.9em; font-weight: 500; min-width: 60px; text-align: right;">
+                            ${server.ping || 'Unknown'}
+                        </div>
                     </div>
-                    <div class="server-ping">${server.ping || 'N/A'}</div>
                 `;
-                
-                serverList.appendChild(serverElement);
-            });
-        }
-
-        // Select a server
-        function selectServer(server) {
-            selectedServer = server;
-            
-            // Update UI
-            const serverOptions = document.querySelectorAll('.server-option');
-            serverOptions.forEach(option => option.classList.remove('selected'));
-            
-            // Find and select the clicked server
-            serverOptions.forEach((option, index) => {
-                if (window.availableServers[index].id === server.id) {
-                    option.classList.add('selected');
-                }
             });
             
-            console.log('Selected server:', server);
+            serverList.innerHTML = serversHTML;
+            console.log('✅ Server list HTML updated with', servers.length, 'servers');
         }
 
-        // Handle VPN connection with selected server
-        async function handleConnect() {
-            try {
-                if (!currentUser) {
-                    console.error('No user logged in');
-                    return;
-                }
-
-                if (!selectedServer) {
-                    document.getElementById('authMessage').innerHTML = '<span style="color: #f44336;">Please select a server first</span>';
-                    return;
-                }
-
-                if (!window.electronAPI) {
-                    console.error('Electron API not available');
-                    return;
-                }
-
-                updateVPNStatus('connecting');
-                
-                // Get real VPN configuration
-                console.log('Generating VPN configuration...');
-                const configResult = await window.realAPI.generateVPNConfig(currentUser.id);
-                
-                if (!configResult.success) {
-                    throw new Error(configResult.message);
-                }
-
-                console.log('VPN config generated, connecting to:', selectedServer.name);
-
-                const result = await window.electronAPI.connectVPN({
-                    server: selectedServer.name,
-                    endpoint: selectedServer.endpoint,
-                    config: configResult.config
-                });
-
-                if (result.success) {
-                    // Log connection to backend
-                    await window.realAPI.logVPNConnection(currentUser.id, selectedServer.endpoint);
-                    console.log('VPN connection initiated with real config');
-                } else {
-                    throw new Error(result.message);
-                }
-            } catch (error) {
-                console.error('VPN connection failed:', error);
-                updateVPNStatus('disconnected');
-                
-                // Show error message
-                const statusDiv = document.querySelector('.status');
-                statusDiv.innerHTML += `<br><span style="color: #f44336;">Connection Error: ${error.message}</span>`;
+        // Select server
+        function selectServer(id, name, location, endpoint) {
+            selectedServer = {
+                id: id,
+                name: name,
+                location: location,
+                endpoint: endpoint
+            };
+            
+            console.log('📍 Server selected:', selectedServer);
+            
+            // Remove selection from all servers
+            document.querySelectorAll('.server-item').forEach(item => {
+                item.classList.remove('selected');
+                item.style.border = '2px solid transparent';
+            });
+            
+            // Add selection to clicked server
+            const clickedServer = document.querySelector(`[data-server-id="${id}"]`);
+            if (clickedServer) {
+                clickedServer.classList.add('selected');
+                clickedServer.style.border = '2px solid #4CAF50';
+                clickedServer.style.background = 'rgba(76, 175, 80, 0.2)';
+                console.log('✅ Visual selection applied to server:', name);
             }
+            
+            // Update current server display
+            document.getElementById('currentServer').textContent = name;
         }
 
-        // Handle VPN disconnection
-        async function handleDisconnect() {
-            try {
-                if (window.electronAPI) {
-                    updateVPNStatus('disconnecting');
+        // Update VPN status
+        function updateVPNStatus(status) {
+            currentVpnStatus = status;
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('vpnStatusText');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            
+            if (!indicator || !statusText) {
+                console.warn('Status elements not found in DOM');
+                return;
+            }
+            
+            // Clear existing classes
+            indicator.className = 'status-icon';
+            
+            switch (status) {
+                case 'connected':
+                    indicator.classList.add('success');
+                    indicator.textContent = '●';
+                    statusText.textContent = 'Connected';
+                    if (connectBtn) connectBtn.classList.add('hidden');
+                    if (disconnectBtn) disconnectBtn.classList.remove('hidden');
                     
-                    const result = await window.electronAPI.disconnectVPN();
+                    // Start connection timer
+                    connectionStartTime = new Date();
+                    startConnectionTimer();
+                    break;
                     
-                    if (result.success && currentUser) {
-                        // Log disconnection to backend
-                        await window.realAPI.logVPNDisconnection(currentUser.id);
-                        console.log('VPN disconnection logged to backend');
+                case 'connecting':
+                    indicator.classList.add('error');
+                    indicator.textContent = '●';
+                    indicator.style.animation = 'pulse 1s infinite';
+                    statusText.textContent = 'Connecting...';
+                    if (connectBtn) connectBtn.disabled = true;
+                    if (disconnectBtn) disconnectBtn.classList.add('hidden');
+                    break;
+                    
+                case 'disconnecting':
+                    indicator.classList.add('error');
+                    indicator.textContent = '●';
+                    indicator.style.animation = 'pulse 1s infinite';
+                    statusText.textContent = 'Disconnecting...';
+                    if (connectBtn) connectBtn.disabled = true;
+                    if (disconnectBtn) disconnectBtn.disabled = true;
+                    break;
+                    
+                default: // disconnected
+                    indicator.classList.add('error');
+                    indicator.textContent = '●';
+                    indicator.style.animation = 'none';
+                    statusText.textContent = 'Disconnected';
+                    if (connectBtn) {
+                        connectBtn.classList.remove('hidden');
+                        connectBtn.disabled = false;
                     }
-                }
-            } catch (error) {
-                console.error('VPN disconnection failed:', error);
+                    if (disconnectBtn) {
+                        disconnectBtn.classList.add('hidden');
+                        disconnectBtn.disabled = false;
+                    }
+                    
+                    // Stop connection timer
+                    stopConnectionTimer();
+                    break;
             }
+            
+            console.log('VPN status updated to:', status);
         }
 
         // Handle VPN status changes from main process
         function handleVPNStatusChange(statusData) {
-            console.log('VPN status changed:', statusData);
+            console.log('📡 VPN status update received:', statusData);
             updateVPNStatus(statusData.status);
             
             if (statusData.status === 'connected') {
-                document.getElementById('currentServer').textContent = statusData.server || (selectedServer ? selectedServer.name : 'Unknown');
-                document.getElementById('connectionIP').textContent = `IP: ${statusData.ip || '10.8.0.2'}`;
-                startConnectionTimer();
+                const currentServerEl = document.getElementById('currentServer');
+                const connectionIPEl = document.getElementById('connectionIP');
+                
+                if (currentServerEl) currentServerEl.textContent = statusData.server || 'Connected';
+                if (connectionIPEl) connectionIPEl.textContent = `IP: ${statusData.ip || 'Unknown'}`;
             } else if (statusData.status === 'disconnected') {
-                document.getElementById('currentServer').textContent = 'None';
-                document.getElementById('connectionIP').textContent = 'IP: Not connected';
-                stopConnectionTimer();
+                const currentServerEl = document.getElementById('currentServer');
+                const connectionIPEl = document.getElementById('connectionIP');
+                
+                if (currentServerEl) currentServerEl.textContent = 'None';
+                if (connectionIPEl) connectionIPEl.textContent = 'IP: Not connected';
             }
         }
 
-        // Update VPN status UI
-        function updateVPNStatus(status) {
-            currentVpnStatus = status;
-            const statusIndicator = document.getElementById('statusIndicator');
-            const statusText = document.getElementById('vpnStatusText');
-            const connectBtn = document.getElementById('connectBtn');
-            const disconnectBtn = document.getElementById('disconnectBtn');
-
-            // Update indicator and text
-            statusIndicator.className = `status-indicator status-${status}`;
-            statusText.textContent = status.charAt(0).toUpperCase() + status.slice(1);
-
-            // Update buttons
-            if (status === 'connected') {
-                connectBtn.classList.add('hidden');
-                disconnectBtn.classList.remove('hidden');
-            } else {
-                connectBtn.classList.remove('hidden');
-                disconnectBtn.classList.add('hidden');
-            }
-
-            // Update button text based on status
-            if (status === 'connecting') {
-                connectBtn.textContent = 'Connecting...';
-                connectBtn.disabled = true;
-            } else if (status === 'disconnecting') {
-                disconnectBtn.textContent = 'Disconnecting...';
-                disconnectBtn.disabled = true;
-            } else {
-                connectBtn.textContent = 'Connect VPN';
-                connectBtn.disabled = false;
-                disconnectBtn.textContent = 'Disconnect VPN';
-                disconnectBtn.disabled = false;
-            }
-        }
-
-        // Connection timer
+        // Start connection timer
         function startConnectionTimer() {
-            connectionStartTime = new Date();
-            connectionTimer = setInterval(updateConnectionTime, 1000);
+            if (connectionTimer) {
+                clearInterval(connectionTimer);
+            }
+            
+            connectionTimer = setInterval(() => {
+                if (connectionStartTime) {
+                    const now = new Date();
+                    const diff = now - connectionStartTime;
+                    const hours = Math.floor(diff / 3600000);
+                    const minutes = Math.floor((diff % 3600000) / 60000);
+                    const seconds = Math.floor((diff % 60000) / 1000);
+                    
+                    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    const connectionTimeEl = document.getElementById('connectionTime');
+                    if (connectionTimeEl) {
+                        connectionTimeEl.textContent = `Duration: ${timeString}`;
+                    }
+                }
+            }, 1000);
         }
 
+        // Stop connection timer
         function stopConnectionTimer() {
             if (connectionTimer) {
                 clearInterval(connectionTimer);
                 connectionTimer = null;
-                connectionStartTime = null;
-                document.getElementById('connectionTime').textContent = 'Duration: 00:00:00';
             }
-        }
-
-        function updateConnectionTime() {
-            if (connectionStartTime) {
-                const now = new Date();
-                const diff = Math.floor((now - connectionStartTime) / 1000);
-                const hours = Math.floor(diff / 3600);
-                const minutes = Math.floor((diff % 3600) / 60);
-                const seconds = diff % 60;
-                
-                const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                document.getElementById('connectionTime').textContent = `Duration: ${timeString}`;
+            connectionStartTime = null;
+            const connectionTimeEl = document.getElementById('connectionTime');
+            if (connectionTimeEl) {
+                connectionTimeEl.textContent = 'Duration: 00:00:00';
             }
-        }
-
-        // Refresh stats
-        async function refreshStats() {
-            try {
-                if (window.electronAPI) {
-                    const stats = await window.electronAPI.getVPNStats();
-                    const sent = formatBytes(stats.bytesSent);
-                    const received = formatBytes(stats.bytesReceived);
-                    document.getElementById('dataTransfer').textContent = `Data: ${sent} sent, ${received} received`;
-                }
-            } catch (error) {
-                console.error('Failed to refresh stats:', error);
-            }
-        }
-
-        // Format bytes
-        function formatBytes(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
         // Handle logout
-        async function handleLogout() {
+        function handleLogout() {
             try {
+                console.log('👋 Logging out...');
+                
                 // Disconnect VPN if connected
                 if (currentVpnStatus === 'connected') {
-                    await handleDisconnect();
+                    handleDisconnect();
                 }
                 
-                // Logout from backend
-                await window.realAPI.logout();
-                
-                // Reset state
+                // Clear user session
+                if (window.realAPI) {
+                    window.realAPI.logout();
+                }
                 currentUser = null;
                 selectedServer = null;
-                window.availableServers = null;
-                stopConnectionTimer();
                 
-                // Switch back to auth
-                document.getElementById('dashboardScreen').classList.add('hidden');
-                document.getElementById('authScreen').classList.remove('hidden');
+                // Reset UI
+                updateVPNStatus('disconnected');
+                
+                const currentServerEl = document.getElementById('currentServer');
+                const connectionIPEl = document.getElementById('connectionIP');
+                
+                if (currentServerEl) currentServerEl.textContent = 'None';
+                if (connectionIPEl) connectionIPEl.textContent = 'IP: Not connected';
                 
                 // Clear forms
-                document.getElementById('loginUsername').value = '';
-                document.getElementById('loginPassword').value = '';
-                document.getElementById('authMessage').innerHTML = '';
+                const loginUsername = document.getElementById('loginUsername');
+                const loginPassword = document.getElementById('loginPassword');
+                const authMessage = document.getElementById('authMessage');
                 
-                console.log('Logout completed');
+                if (loginUsername) loginUsername.value = '';
+                if (loginPassword) loginPassword.value = '';
+                if (authMessage) authMessage.classList.add('hidden');
+                
+                // Switch back to auth screen
+                const dashboardScreen = document.getElementById('dashboardScreen');
+                const authScreen = document.getElementById('authScreen');
+                
+                if (dashboardScreen) dashboardScreen.classList.add('hidden');
+                if (authScreen) authScreen.classList.remove('hidden');
+                
+                console.log('✅ Logout successful');
+                
             } catch (error) {
-                console.error('Logout failed:', error);
+                console.error('❌ Logout failed:', error);
             }
         }
 
-        console.log('GhostSwitch VPN App with Signup loaded successfully');
+        // // Handle VPN connection
+        // async function handleConnect() {
+        //     try {
+        //         const currentUser = window.realAPI.getCurrentUser();
+        //         if (!currentUser) {
+        //             console.error('❌ No user logged in');
+        //             showMessage('Please login first', 'error');
+        //             return;
+        //         }
+
+        //         if (!selectedServer) {
+        //             showMessage('Please select a server first', 'error');
+        //             return;
+        //         }
+
+        //         console.log('🚀 Starting REAL VPN connection process...');
+        //         updateVPNStatus('connecting');
+                
+        //         // Continue with VPN configuration and connection...
+        //         showMessage('Requesting VPN configuration...', 'info');
+                
+        //         const configResult = await window.realAPI.generateVPNConfig();
+                
+        //         if (!configResult.success) {
+        //             throw new Error(configResult.message);
+        //         }
+
+        //         console.log('✅ VPN config received, client IP:', configResult.client_ip);
+        //         showMessage(`Configuration received (IP: ${configResult.client_ip})`, 'success');
+
+        //         // Connect using real WireGuard with actual config
+        //         console.log('🔗 Establishing WireGuard connection...');
+        //         showMessage('Connecting to VPN server...', 'info');
+                
+        //         const result = await window.electronAPI.connectVPNReal({
+        //             server: selectedServer.name,
+        //             endpoint: selectedServer.endpoint,
+        //             config: configResult.config,
+        //             clientIP: configResult.client_ip
+        //         });
+
+        //         if (result.success) {
+        //             console.log('🎉 REAL VPN connection established!');
+                    
+        //             // Log connection to backend
+        //             await window.realAPI.logVPNConnection(selectedServer.endpoint);
+                    
+        //             // Update status
+        //             showMessage('VPN Connected Successfully!', 'success');
+                    
+        //         } else {
+        //             throw new Error(result.message);
+        //         }
+        //     } catch (error) {
+        //         console.error('❌ VPN connection failed:', error);
+        //         updateVPNStatus('disconnected');
+        //         showMessage(`Connection Error: ${error.message}`, 'error');
+        //     }
+        // }
+
+        // Handle disconnection
+        async function handleDisconnect() {
+            try {
+                console.log('🔌 Disconnecting VPN...');
+                updateVPNStatus('disconnecting');
+                
+                const result = await window.electronAPI.disconnectVPNReal();
+                
+                if (result.success) {
+                    console.log('✅ VPN disconnected successfully');
+                    
+                    // Log disconnection to backend
+                    await window.realAPI.logVPNDisconnection();
+                    
+                    showMessage('VPN Disconnected', 'info');
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                console.error('❌ VPN disconnection failed:', error);
+                updateVPNStatus('disconnected');
+                showMessage(`Disconnection Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Refresh VPN statistics
+        async function refreshStats() {
+            try {
+                console.log('🔄 Refreshing VPN statistics...');
+                
+                // Test backend connection
+                await testBackendConnection();
+                
+                showMessage(`Stats refreshed at ${new Date().toLocaleTimeString()}`, 'success');
+                
+            } catch (error) {
+                console.error('Failed to refresh stats:', error);
+                showMessage(`Failed to refresh stats: ${error.message}`, 'error');
+            }
+        }
+
+        // In your React app's connect function:
+        // Replace the existing handleConnect function 
+        async function handleConnect() {
+            try {
+                const currentUser = window.realAPI.getCurrentUser();
+                if (!currentUser) {
+                    console.error('❌ No user logged in');
+                    showMessage('Please login first', 'error');
+                    return;
+                }
+
+                if (!selectedServer) {
+                    showMessage('Please select a server first', 'error');
+                    return;
+                }
+
+                console.log('🚀 Starting VPN connection process...');
+                updateVPNStatus('connecting');
+                
+                showMessage('Requesting VPN configuration...', 'info');
+                
+                // Generate VPN config
+                const configResult = await window.realAPI.generateVPNConfig();
+                
+                if (!configResult.success) {
+                    throw new Error(configResult.message || 'Failed to generate config');
+                }
+
+                console.log('✅ VPN config received, client IP:', configResult.client_ip);
+                showMessage(`Configuration received (IP: ${configResult.client_ip})`, 'success');
+                
+                // Save config to file
+                const configPath = await window.electronAPI.saveConfigToFile(configResult.config);
+                console.log('📁 Config saved to:', configPath);
+
+                // Connect using WireGuard
+                console.log('🔗 Establishing WireGuard connection...');
+                showMessage('Connecting to VPN server...', 'info');
+                
+                const result = await window.electronAPI.connectVPN(configPath);
+
+                if (result.success) {
+                    console.log('🎉 VPN connection established!');
+                    
+                    // Log connection to backend
+                    await window.realAPI.logVPNConnection(selectedServer.endpoint);
+                    
+                    // Update status
+                    updateVPNStatus('connected');
+                    document.getElementById('connectionIP').textContent = `IP: ${configResult.client_ip}`;
+                    showMessage('VPN Connected Successfully!', 'success');
+                    
+                } else {
+                    throw new Error(result.error || 'Connection failed');
+                }
+            } catch (error) {
+                console.error('❌ VPN connection failed:', error);
+                updateVPNStatus('disconnected');
+                showMessage(`Connection Error: ${error.message}`, 'error');
+            }
+        }
+
+        // // In your disconnect function:
+        // async function handleDisconnect() {
+        //     try {
+        //         setStatus('disconnecting');
+                
+        //         const result = await window.electronAPI.disconnectVPN();
+        //         if (!result.success) {
+        //             showMessage(`Failed to disconnect: ${result.error}`, 'warning');
+        //         }
+                
+        //         // Always consider disconnected even if there was an error
+        //         setStatus('disconnected');
+        //         setCurrentServer(null);
+        //         setClientIP(null);
+                
+        //         // Log disconnection
+        //         await api.logVPNDisconnection();
+                
+        //     } catch (error) {
+        //         showMessage(`Disconnection error: ${error.message}`, 'warning');
+        //         setStatus('disconnected');
+        //     }
+        // }
+
+        // Add a function to check status periodically
+        function setupVPNStatusCheck() {
+            const checkInterval = setInterval(async () => {
+                if (status === 'connected') {
+                    const result = await window.electronAPI.checkVPNStatus();
+                    if (!result.isActive) {
+                        // VPN disconnected unexpectedly
+                        showMessage('VPN connection lost', 'warning');
+                        setStatus('disconnected');
+                        setCurrentServer(null);
+                        setClientIP(null);
+                    }
+                }
+            }, 10000); // Check every 10 seconds
+            
+            // Clean up interval when component unmounts
+            return () => clearInterval(checkInterval);
+        }
     </script>
 </body>
 </html>

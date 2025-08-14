@@ -1,7 +1,6 @@
 # import subprocess
 # import os
 # import platform
-# import requests
 # import tempfile
 # from pathlib import Path
 
@@ -129,30 +128,126 @@
 import subprocess
 import os
 import platform
+import tempfile
+from pathlib import Path
 
 class WireGuardManager:
     def __init__(self):
         self.system = platform.system()
+        self.config_path = None
         
     def is_installed(self):
-        """For now, just return True to skip WireGuard check"""
-        return True  # We'll implement proper detection later
+        """Check if WireGuard is properly installed"""
+        try:
+            if self.system == "Windows":
+                result = subprocess.run(["where", "wg"], capture_output=True, text=True)
+                return result.returncode == 0
+            else:
+                result = subprocess.run(["which", "wg"], capture_output=True, text=True)
+                return result.returncode == 0
+        except:
+            return False
         
-    def get_tunnel_status(self):
-        """Return dummy status for now"""
-        return "disconnected"
-        
-    def create_tunnel(self, config):
-        """Placeholder for tunnel creation"""
-        print("Creating tunnel with config...")
-        return True
-        
-    def connect_tunnel(self):
-        """Placeholder for connection"""
-        print("Connecting to tunnel...")
-        return True
-        
-    def disconnect_tunnel(self):
-        """Placeholder for disconnection"""
-        print("Disconnecting from tunnel...")
-        return True
+    def create_config_file(self, config_content, tunnel_name="GhostSwitch"):
+        """Create WireGuard configuration file"""
+        try:
+            if self.system == "Windows":
+                # Windows WireGuard config directory
+                config_dir = os.path.expanduser("~/AppData/Local/WireGuard/Configurations")
+            else:
+                # Linux WireGuard config directory
+                config_dir = "/etc/wireguard"
+                
+            os.makedirs(config_dir, exist_ok=True)
+            
+            config_file = os.path.join(config_dir, f"{tunnel_name}.conf")
+            
+            with open(config_file, 'w') as f:
+                f.write(config_content)
+                
+            # Set proper permissions (important for WireGuard)
+            os.chmod(config_file, 0o600)
+            
+            self.config_path = config_file
+            return config_file
+            
+        except Exception as e:
+            print(f"Failed to create config file: {e}")
+            return None
+    
+    def connect_tunnel(self, tunnel_name="GhostSwitch"):
+        """Actually connect to WireGuard tunnel"""
+        try:
+            if not self.config_path:
+                raise Exception("No configuration file created")
+                
+            if self.system == "Windows":
+                # Use WireGuard Windows client
+                cmd = ["wg-quick", "up", self.config_path]
+            else:
+                # Use WireGuard Linux
+                cmd = ["sudo", "wg-quick", "up", f"/etc/wireguard/{tunnel_name}.conf"]
+                
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode == 0:
+                print("WireGuard tunnel connected successfully")
+                return True
+            else:
+                print(f"WireGuard connection failed: {result.stderr}")
+                return False
+                
+        except Exception as e:
+            print(f"Failed to connect tunnel: {e}")
+            return False
+    
+    def disconnect_tunnel(self, tunnel_name="GhostSwitch"):
+        """Disconnect WireGuard tunnel"""
+        try:
+            if self.system == "Windows":
+                cmd = ["wg-quick", "down", self.config_path]
+            else:
+                cmd = ["sudo", "wg-quick", "down", f"/etc/wireguard/{tunnel_name}.conf"]
+                
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode == 0:
+                print("WireGuard tunnel disconnected successfully")
+                return True
+            else:
+                print(f"WireGuard disconnection failed: {result.stderr}")
+                return False
+                
+        except Exception as e:
+            print(f"Failed to disconnect tunnel: {e}")
+            return False
+    
+    def get_tunnel_status(self, tunnel_name="GhostSwitch"):
+        """Get actual tunnel status"""
+        try:
+            result = subprocess.run(["wg", "show"], capture_output=True, text=True)
+            
+            if result.returncode == 0 and tunnel_name.lower() in result.stdout.lower():
+                return "connected"
+            else:
+                return "disconnected"
+                
+        except Exception as e:
+            print(f"Failed to get tunnel status: {e}")
+            return "unknown"
+    
+    def add_route_rules(self):
+        """Add routing rules to ensure all traffic goes through VPN"""
+        try:
+            if self.system == "Windows":
+                # Add route to send all traffic through VPN interface
+                subprocess.run(["route", "add", "0.0.0.0", "mask", "0.0.0.0", "10.0.0.1"], 
+                             capture_output=True)
+            else:
+                # Linux routing
+                subprocess.run(["sudo", "ip", "route", "add", "default", "via", "10.0.0.1"], 
+                             capture_output=True)
+                
+            return True
+        except:
+            return False
