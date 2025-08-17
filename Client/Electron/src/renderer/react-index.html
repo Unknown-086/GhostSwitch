@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' http://51.112.111.180:5000 http://3.28.190.141:5000; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' http://51.112.215.253:5000 http://3.28.190.141:5000; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
     <title>GhostSwitch VPN</title>
     <!-- ✅ LINK TO EXTERNAL CSS FILE -->
     <link rel="stylesheet" href="react-index.css">
@@ -717,24 +717,24 @@
             const statusText = document.getElementById('vpnStatusText');
             const connectBtn = document.getElementById('connectBtn');
             const disconnectBtn = document.getElementById('disconnectBtn');
-            
+
             if (!indicator || !statusText) {
                 console.warn('Status elements not found in DOM');
                 return;
             }
-            
-            // Clear existing classes
+
+            // Reset visual state first
             indicator.className = 'status-icon';
-            
+            // Important: fully clear previous pulse animation
+            indicator.style.removeProperty('animation');
+
             switch (status) {
                 case 'connected':
                     indicator.classList.add('success');
                     indicator.textContent = '●';
                     statusText.textContent = 'Connected';
-                    if (connectBtn) connectBtn.classList.add('hidden');
-                    if (disconnectBtn) disconnectBtn.classList.remove('hidden');
-                    
-                    // Start connection timer
+                    if (connectBtn) { connectBtn.classList.add('hidden'); connectBtn.disabled = false; }
+                    if (disconnectBtn) { disconnectBtn.classList.remove('hidden'); disconnectBtn.disabled = false; }
                     connectionStartTime = new Date();
                     startConnectionTimer();
                     break;
@@ -745,142 +745,62 @@
                     indicator.style.animation = 'pulse 1s infinite';
                     statusText.textContent = 'Connecting...';
                     if (connectBtn) connectBtn.disabled = true;
-                    if (disconnectBtn) disconnectBtn.classList.add('hidden');
+                    if (disconnectBtn) { disconnectBtn.classList.add('hidden'); disconnectBtn.disabled = true; }
                     break;
-                    
+
                 case 'disconnecting':
                     indicator.classList.add('error');
                     indicator.textContent = '●';
                     indicator.style.animation = 'pulse 1s infinite';
                     statusText.textContent = 'Disconnecting...';
                     if (connectBtn) connectBtn.disabled = true;
-                    if (disconnectBtn) disconnectBtn.disabled = true;
+                    if (disconnectBtn) { disconnectBtn.disabled = true; disconnectBtn.classList.remove('hidden'); }
                     break;
-                    
-                default: // disconnected
+
+                default: // 'disconnected'
                     indicator.classList.add('error');
                     indicator.textContent = '●';
-                    indicator.style.animation = 'none';
                     statusText.textContent = 'Disconnected';
-                    if (connectBtn) {
-                        connectBtn.classList.remove('hidden');
-                        connectBtn.disabled = false;
-                    }
-                    if (disconnectBtn) {
-                        disconnectBtn.classList.add('hidden');
-                        disconnectBtn.disabled = false;
-                    }
-                    
-                    // Stop connection timer
+                    if (connectBtn) { connectBtn.classList.remove('hidden'); connectBtn.disabled = false; }
+                    if (disconnectBtn) { disconnectBtn.classList.add('hidden'); disconnectBtn.disabled = false; }
                     stopConnectionTimer();
                     break;
             }
-            
+
             console.log('VPN status updated to:', status);
         }
 
-        // Handle VPN status changes from main process
-        function handleVPNStatusChange(statusData) {
-            console.log('📡 VPN status update received:', statusData);
-            updateVPNStatus(statusData.status);
-            
-            if (statusData.status === 'connected') {
-                const currentServerEl = document.getElementById('currentServer');
-                const connectionIPEl = document.getElementById('connectionIP');
-                
-                if (currentServerEl) currentServerEl.textContent = statusData.server || 'Connected';
-                if (connectionIPEl) connectionIPEl.textContent = `IP: ${statusData.ip || 'Unknown'}`;
-            } else if (statusData.status === 'disconnected') {
-                const currentServerEl = document.getElementById('currentServer');
-                const connectionIPEl = document.getElementById('connectionIP');
-                
-                if (currentServerEl) currentServerEl.textContent = 'None';
-                if (connectionIPEl) connectionIPEl.textContent = 'IP: Not connected';
-            }
+        // Force reset helper in case any async path leaves the UI inconsistent
+        function forceDisconnectedUI() {
+            updateVPNStatus('disconnected');
+            const currentServerEl = document.getElementById('currentServer');
+            const connectionIPEl = document.getElementById('connectionIP');
+            if (currentServerEl) currentServerEl.textContent = 'None';
+            if (connectionIPEl) connectionIPEl.textContent = 'IP: Not connected';
         }
 
-        // Start connection timer
-        function startConnectionTimer() {
-            if (connectionTimer) {
-                clearInterval(connectionTimer);
-            }
-            
-            connectionTimer = setInterval(() => {
-                if (connectionStartTime) {
-                    const now = new Date();
-                    const diff = now - connectionStartTime;
-                    const hours = Math.floor(diff / 3600000);
-                    const minutes = Math.floor((diff % 3600000) / 60000);
-                    const seconds = Math.floor((diff % 60000) / 1000);
-                    
-                    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                    const connectionTimeEl = document.getElementById('connectionTime');
-                    if (connectionTimeEl) {
-                        connectionTimeEl.textContent = `Duration: ${timeString}`;
-                    }
-                }
-            }, 1000);
-        }
-
-        // Stop connection timer
-        function stopConnectionTimer() {
-            if (connectionTimer) {
-                clearInterval(connectionTimer);
-                connectionTimer = null;
-            }
-            connectionStartTime = null;
-            const connectionTimeEl = document.getElementById('connectionTime');
-            if (connectionTimeEl) {
-                connectionTimeEl.textContent = 'Duration: 00:00:00';
-            }
-        }
-
-        // Handle logout
-        function handleLogout() {
+        // Handle disconnection
+        async function handleDisconnect() {
             try {
-                console.log('👋 Logging out...');
-                
-                // Disconnect VPN if connected
-                if (currentVpnStatus === 'connected') {
-                    handleDisconnect();
+                console.log('🔌 Disconnecting VPN...');
+                updateVPNStatus('disconnecting');
+
+                const result = await window.electronAPI.disconnectVPN();
+
+                // Always force UI to Disconnected at the end
+                forceDisconnectedUI();
+
+                if (result && result.success) {
+                    console.log('✅ VPN disconnected successfully');
+                    showMessage('VPN Disconnected', 'info');
+                } else if (result && result.error) {
+                    console.warn('⚠️ Disconnection returned error:', result.error);
+                    showMessage(`Disconnection warning: ${result.error}`, 'warning');
                 }
-                
-                // Clear user session
-                if (window.realAPI) {
-                    window.realAPI.logout();
-                }
-                currentUser = null;
-                selectedServer = null;
-                
-                // Reset UI
-                updateVPNStatus('disconnected');
-                
-                const currentServerEl = document.getElementById('currentServer');
-                const connectionIPEl = document.getElementById('connectionIP');
-                
-                if (currentServerEl) currentServerEl.textContent = 'None';
-                if (connectionIPEl) connectionIPEl.textContent = 'IP: Not connected';
-                
-                // Clear forms
-                const loginUsername = document.getElementById('loginUsername');
-                const loginPassword = document.getElementById('loginPassword');
-                const authMessage = document.getElementById('authMessage');
-                
-                if (loginUsername) loginUsername.value = '';
-                if (loginPassword) loginPassword.value = '';
-                if (authMessage) authMessage.classList.add('hidden');
-                
-                // Switch back to auth screen
-                const dashboardScreen = document.getElementById('dashboardScreen');
-                const authScreen = document.getElementById('authScreen');
-                
-                if (dashboardScreen) dashboardScreen.classList.add('hidden');
-                if (authScreen) authScreen.classList.remove('hidden');
-                
-                console.log('✅ Logout successful');
-                
             } catch (error) {
-                console.error('❌ Logout failed:', error);
+                console.error('VPN disconnection failed:', error);
+                forceDisconnectedUI();
+                showMessage(`Disconnection Error: ${error.message}`, 'error');
             }
         }
 
@@ -950,20 +870,20 @@
                 console.log('🔌 Disconnecting VPN...');
                 updateVPNStatus('disconnecting');
                 
-                const result = await window.electronAPI.disconnectVPNReal();
+                const result = await window.electronAPI.disconnectVPN();
                 
+                updateVPNStatus('disconnected');
                 if (result.success) {
                     console.log('✅ VPN disconnected successfully');
-                    
                     // Log disconnection to backend
-                    await window.realAPI.logVPNDisconnection();
+                    // await window.realAPI.logVPNDisconnection();
                     
                     showMessage('VPN Disconnected', 'info');
                 } else {
                     throw new Error(result.message);
                 }
             } catch (error) {
-                console.error('❌ VPN disconnection failed:', error);
+                console.error('VPN disconnection failed:', error);
                 updateVPNStatus('disconnected');
                 showMessage(`Disconnection Error: ${error.message}`, 'error');
             }
@@ -972,7 +892,7 @@
         // Refresh VPN statistics
         async function refreshStats() {
             try {
-                console.log('🔄 Refreshing VPN statistics...');
+                console.log('Refreshing VPN statistics...');
                 
                 // Test backend connection
                 await testBackendConnection();
@@ -1025,27 +945,108 @@
                 showMessage('Connecting to VPN server...', 'info');
                 
                 const result = await window.electronAPI.connectVPN(configPath);
-
-                if (result.success) {
-                    console.log('🎉 VPN connection established!');
-                    
-                    // Log connection to backend
+                
+                
+                try {
+                    // Log connection to backend regardless of command result
                     await window.realAPI.logVPNConnection(selectedServer.endpoint);
                     
-                    // Update status
-                    updateVPNStatus('connected');
-                    document.getElementById('connectionIP').textContent = `IP: ${configResult.client_ip}`;
-                    showMessage('VPN Connected Successfully!', 'success');
-                    
-                } else {
-                    throw new Error(result.error || 'Connection failed');
+                    if (result.success) {
+                        console.log('🎉 VPN connection established!');
+                        
+                        // Update status
+                        updateVPNStatus('connected');
+                        document.getElementById('connectionIP').textContent = `IP: ${configResult.client_ip}`;
+                        showMessage('VPN Connected Successfully!', 'success');
+                    } else {
+                        console.warn('⚠️ Initial connection command returned error but tunnel may still be active');
+                        console.warn('Error was:', result.error);
+                        
+                        // Start verification process - may still be connected despite error
+                        verifyVPNConnection(configResult.client_ip);
+                    }
+                } catch (apiError) {
+                    console.error('❌ API logging error:', apiError);
+                    // Still try to verify connection even if logging fails
+                    verifyVPNConnection(configResult.client_ip);
                 }
+
             } catch (error) {
                 console.error('❌ VPN connection failed:', error);
                 updateVPNStatus('disconnected');
                 showMessage(`Connection Error: ${error.message}`, 'error');
             }
         }
+
+
+        // Add this function after your handleConnect function
+
+        // Verify VPN connection status
+        function verifyVPNConnection(clientIP) {
+            console.log('🔍 Verifying VPN connection status...');
+            
+            // Set a timeout to check connection status after 3 seconds
+            setTimeout(async () => {
+                try {
+                    // Method 1: Check if interface exists
+                    const statusCheck = await window.electronAPI.checkVPNStatus();
+                    
+                    console.log('🔍 VPN status check result:', statusCheck);
+                    
+                    if (statusCheck.isActive) {
+                        console.log('✅ VPN connection verified as active!');
+                        updateVPNStatus('connected');
+                        document.getElementById('connectionIP').textContent = `IP: ${clientIP}`;
+                        showMessage('VPN Connected Successfully!', 'success');
+                        return;
+                    }
+                    
+                    // Method 2: Check if our IP has changed
+                    try {
+                        console.log('🌐 Checking external IP...');
+                        
+                        // Try to fetch our external IP
+                        const ipCheckUrl = 'https://api.ipify.org?format=json';
+                        const response = await fetch(ipCheckUrl);
+                        const data = await response.json();
+                        
+                        console.log('📡 Current external IP:', data.ip);
+                        
+                        // If the IP has changed, we're connected
+                        if (data.ip !== window.originalIP) {
+                            console.log('✅ IP change detected - VPN connected!');
+                            updateVPNStatus('connected');
+                            document.getElementById('connectionIP').textContent = `IP: ${clientIP} (External: ${data.ip})`;
+                            showMessage('VPN Connected Successfully!', 'success');
+                            return;
+                        }
+                    } catch (ipError) {
+                        console.log('❌ IP check failed:', ipError);
+                        // Continue to final method even if this fails
+                    }
+                    
+                    // If we're here, we need to manually check the service
+                    console.log('⚠️ Standard checks failed, but tunnel may still be active');
+                    
+                    // Ask the user about the connection
+                    const isConnected = confirm('Is your VPN connected? (Check Windows network icon for VPN connection)');
+                    if (isConnected) {
+                        console.log('👤 User confirmed VPN is connected');
+                        updateVPNStatus('connected');
+                        document.getElementById('connectionIP').textContent = `IP: ${clientIP}`;
+                        showMessage('VPN Connected Successfully!', 'success');
+                    } else {
+                        console.log('👤 User confirmed VPN is NOT connected');
+                        updateVPNStatus('disconnected');
+                        showMessage('VPN Connection failed - please try again', 'error');
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ VPN verification failed:', error);
+                }
+            }, 3000);
+        }
+
 
         // // In your disconnect function:
         // async function handleDisconnect() {

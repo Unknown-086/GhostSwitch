@@ -1,13 +1,13 @@
 export const APP_CONFIG = {
     // API Configuration
-    API_BASE_URL: "http://51.112.111.180:5000/api",
+    API_BASE_URL: "http://51.112.215.253:5000/api",
     API_TIMEOUT: 10000,
     
     // Window Configuration
     WINDOW_TITLE: "GhostSwitch VPN",
     
     // VPN Configuration
-    DEFAULT_DNS: "1.1.1.1,8.8.8.8",
+    DEFAULT_DNS: "8.8.8.8",
     KEEPALIVE_INTERVAL: 25,
     
     // Connection States

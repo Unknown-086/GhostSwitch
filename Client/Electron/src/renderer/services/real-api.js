@@ -1,6 +1,6 @@
 class RealAPIService {
     constructor() {
-        this.baseURL = 'http://3.28.190.141:5000/api';
+        this.baseURL = 'http://51.112.215.253:5000/api';
         this.token = this.getToken();
         console.log('Real API Service initialized - Backend:', this.baseURL);
     }
